@@ -5,6 +5,14 @@ use EvoPhp\Api\Requests\Requests;
 use Public\Modules\Tokens2Wealth\Classes\Migrate;
 
 //API End points
+$router->group('/t2w/api', function () use ($router) {
+    $router->post('/balance/{ac_number}', function($params){
+        $request = new Requests;
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBalance($params['ac_number']);;
+        });
+    });
+});
 
 //Pages
 $router->get('/t2w/migrate', function($params) {

@@ -42,8 +42,33 @@ final class Accounts
     }
 
     public static function getBalance($ac_number, $upto = NULL) {
+        $self = new self;
         $upto = $upto == NULL ? date('Y-m-d h:i:s') : $upto;
-        echo $ac_number;
+        $requestYear = date("Y", strtotime($upto));
+        $CTY = $self->dbTable->select('t2w_transactions', 'SUM(amount) as val')
+                            ->whereBetween('time_altered', "$requestYear-01-01", $upto, 'ss')
+                            ->where('status', 'successful', 's')
+                            ->where('ledger', 'credit', 's')
+                            ->where('account', $ac_number, 's')
+                            ->execute()->row();
+        $DTY = $self->dbTable->select('t2w_transactions', 'SUM(amount) as val')
+                            ->whereBetween('time_altered', "$requestYear-01-01", $upto, 'ss')
+                            ->where('status', 'successful', 's')
+                            ->where('ledger', 'debit', 's')
+                            ->where('account', $ac_number, 's')
+                            ->execute()->row();
+        $BF = $self->dbTable->select('t2w_trial_balance', 'SUM(credits) as credits, SUM(debits) as debits')
+                            ->where('ac_number', $ac_number, 's')
+                            ->whereBetween('from_date', "2018-01-01", "$requestYear-01-02", 'ss')
+                            ->whereBetween('to_date', "2018-01-01", "$requestYear-01-02", 'ss')
+                            ->execute()->row();
+        $credits = $CTY !== NULL ? $CTY->val : 0;
+        $debits = $DTY !== NULL ? $DTY->val : 0;
+        if($BF !== NULL) {
+            $credits += $BF->credits ?? 0;
+            $debits += $BF->debits ?? 0;
+        }
+        return $credits - $debits;
     }
 }
 
