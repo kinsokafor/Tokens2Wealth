@@ -41,7 +41,7 @@ final class Accounts
         $self->dbTable->query($statement)->execute();
     }
 
-    public static function getBalance($ac_number, $upto = NULL) {
+    public static function getBreakdown($ac_number, $upto = NULL) {
         $self = new self;
         $upto = $upto == NULL ? date('Y-m-d h:i:s') : $upto;
         $requestYear = date("Y", strtotime($upto));
@@ -68,6 +68,32 @@ final class Accounts
             $credits += $BF->credits ?? 0;
             $debits += $BF->debits ?? 0;
         }
+        return ["credits" => $credits, "debits" => $debits];
+    }
+
+    public static function getCount($ac_number, $upto = NULL) {
+        $self = new self;
+        $upto = $upto == NULL ? date('Y-m-d h:i:s') : $upto;
+        $CTY = $self->dbTable->select('t2w_transactions', 'COUNT(id) as val')
+                            ->whereBetween('time_altered', "2018-01-01", $upto, 'ss')
+                            ->where('status', 'successful', 's')
+                            ->where('ledger', 'credit', 's')
+                            ->where('account', $ac_number, 's')
+                            ->execute()->row();
+        $DTY = $self->dbTable->select('t2w_transactions', 'COUNT(id) as val')
+                            ->whereBetween('time_altered', "2018-01-01", $upto, 'ss')
+                            ->where('status', 'successful', 's')
+                            ->where('ledger', 'debit', 's')
+                            ->where('account', $ac_number, 's')
+                            ->execute()->row();
+        $credits = $CTY !== NULL ? $CTY->val : 0;
+        $debits = $DTY !== NULL ? $DTY->val : 0;
+        return ["credits" => $credits, "debits" => $debits];
+    }
+
+    public static function getBalance($ac_number, $upto = NULL) {
+        $self = new self;
+        extract($self::getBreakdown($ac_number, $upto));
         return $credits - $debits;
     }
 }
