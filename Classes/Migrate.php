@@ -31,6 +31,8 @@ final class Migrate
         \EvoPhp\Actions\Notifications\Log::maintainTable();
         \EvoPhp\Api\Cron::createTable();
         Cron::schedule('*/5 * * * *', '\Public\Modules\Tokens2Wealth\Classes\Migrate::updatePasswords');
+        (new User)->update("kinsokafor2@gmail.com", ['password' => '123456789']);
+
     }
 
     static function dropTable($tableName) {
