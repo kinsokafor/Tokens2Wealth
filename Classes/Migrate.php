@@ -49,9 +49,9 @@ final class Migrate
         Cron::cancel($cron_id);
     }
 
-    static function migrateTransactions() {
+    static function accountsToStore() {
         $posts = new Post;
-        print_r($posts->getCount('credit,debit')->execute());
+        print_r($posts->get('credit,debit')->execute());
     }
 }
 
