@@ -9,19 +9,33 @@ $router->group('/t2w/api', function () use ($router) {
     $router->post('/balance/{ac_number}', function($params){
         $request = new Requests;
         $request->evoAction()->auth(1,2)->execute(function() use ($params){
-            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBalance($params['ac_number']);;
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBalance($params['ac_number']);
         });
     });
     $router->post('/break-down/{ac_number}', function($params){
         $request = new Requests;
         $request->evoAction()->auth(1,2)->execute(function() use ($params){
-            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBreakdown($params['ac_number']);;
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBreakdown($params['ac_number']);
         });
     });
     $router->post('/break-down/count/{ac_number}', function($params){
         $request = new Requests;
         $request->evoAction()->auth(1,2)->execute(function() use ($params){
-            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getCount($params['ac_number']);;
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getCount($params['ac_number']);
+        });
+    });
+    $router->post('/get/accounts', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::get($params);
+        });
+    });
+    $router->post('/get/account/{ac_type}/{user_id}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9,10)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getSingle($params);
         });
     });
 });

@@ -96,6 +96,47 @@ final class Accounts
         extract($self::getBreakdown($ac_number, $upto));
         return $credits - $debits;
     }
+
+    public static function get($params) {
+        extract($params);
+        $self = new self;
+        return $self->dbTable->joinUserAt('user_id', 'surname', 'other_names', 'middle_name', 'profile_picture', 'gender')->query("
+            SELECT id, user_id, ac_number, ac_type, status, meta, 
+                time_altered, last_altered_by, 
+                (IFNULL(t2.credits, 0) - IFNULL(t3.debits, 0)) as balance, 
+                t2.credits, t3.debits FROM t2w.t2w_accounts as t1 
+            INNER JOIN 
+                (   SELECT IFNULL(SUM(amount), 0) as credits, account 
+                FROM t2w.t2w_transactions WHERE ledger = 'credit' GROUP BY account) as t2
+            ON t1.ac_number = t2.account
+            INNER JOIN 
+                (   SELECT IFNULL(SUM(amount), 0) as debits, account 
+                FROM t2w.t2w_transactions WHERE ledger = 'debit' GROUP BY account) as t3
+            ON t1.ac_number = t3.account
+            LIMIT ?
+            OFFSET ?
+        ", "ii", $limit, $offset)->execute()->rows();
+    }
+
+    public static function getSingle($params) {
+        extract($params);
+        $self = new self;
+        return $self->dbTable->joinUserAt('user_id', 'surname', 'other_names', 'middle_name', 'profile_picture', 'gender')->query("
+            SELECT id, user_id, ac_number, ac_type, status, meta, 
+                time_altered, last_altered_by, 
+                (IFNULL(t2.credits, 0) - IFNULL(t3.debits, 0)) as balance, 
+                IFNULL(t2.credits, 0) as credits, IFNULL(t3.debits, 0) as debits FROM t2w.t2w_accounts as t1 
+            INNER JOIN 
+                (   SELECT IFNULL(SUM(amount), 0) as credits, account 
+                FROM t2w.t2w_transactions WHERE ledger = 'credit' GROUP BY account) as t2
+            ON t1.ac_number = t2.account
+            INNER JOIN 
+                (   SELECT IFNULL(SUM(amount), 0) as debits, account 
+                FROM t2w.t2w_transactions WHERE ledger = 'debit' GROUP BY account) as t3
+            ON t1.ac_number = t3.account
+            WHERE t1.user_id = ? AND t1.ac_type = ?
+        ", "is", $user_id, $ac_type)->execute()->row();
+    }
 }
 
 ?>
