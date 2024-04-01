@@ -30,9 +30,7 @@ final class Migrate
         \EvoPhp\Actions\Action::maintainTable();
         \EvoPhp\Actions\Notifications\Log::maintainTable();
         \EvoPhp\Api\Cron::createTable();
-        Cron::schedule('*/5 * * * *', '\Public\Modules\Tokens2Wealth\Classes\Migrate::updatePasswords');
-        (new User)->update("kinsokafor2@gmail.com", ['password' => '123456789']);
-
+        Cron::schedule('*/5 * * * *', '\Public\Modules\Tokens2Wealth\Classes\Migrate::transactions');
     }
 
     static function dropTable($tableName) {
@@ -40,13 +38,13 @@ final class Migrate
         $query->query("DROP TABLE $tableName")->execute();
     }
 
-    static function updatePasswords($cron_id, $args = []) {
-        $query = new Query;
-        $users = $query->select('users', 'id')->execute()->rows();
-        foreach($users as $user) {
-            (new User)->update((int) $user->id, ['password' => '123456789']);
-        }
-        Cron::cancel($cron_id);
+    static function transactions($cron_id, $args = []) {
+        // $query = new Query;
+        // $users = $query->select('users', 'id')->execute()->rows();
+        // foreach($users as $user) {
+        //     (new User)->update((int) $user->id, ['password' => '123456789']);
+        // }
+        // Cron::cancel($cron_id);
     }
 
     static function accountsToStore() {
