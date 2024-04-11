@@ -40,11 +40,43 @@ $router->group('/t2w/api', function () use ($router) {
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getSingle($params);
         });
     });
+    $router->post('/get/user-accounts', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9,10)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getByUser((int) $params['user_id']);
+        });
+    });
     $router->post('/get/account-number/{ac_number}', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2,3,4,5,6,7,8,9,10)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getByNumber($params);
+        });
+    });
+    $router->post('/account/edit-status', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::editStatus($params['id'], $params['status']);
+        });
+    });
+
+    // Thrift
+    $router->post('/edit-thrift-amount', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::editThriftAmount($params['id'], $params['amount']);
+        });
+    });
+
+    //Loan
+    $router->post('/get-loan-components', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::loanComponents($params['id']);
         });
     });
 });
