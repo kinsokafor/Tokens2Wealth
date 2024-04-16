@@ -33,9 +33,9 @@ final class Wallets {
     public function new($data, $ledger) {
         extract($data);
         $session = Session::getInstance();
-        $id = $this->dbTable->insert('t2w_transactions', '', [
+        $id = $this->dbTable->insert('t2w_transactions', 'sdssssi', [
             "account" => $account,
-            "amount" => (float) $amount,
+            "amount" => (double) $amount,
             "ledger" => $ledger,
             "status" => $status ?? "successful",
             "narration" => $narration ?? "Deposit transaction",
@@ -49,14 +49,38 @@ final class Wallets {
                         ->row();
     }
 
-    public static function newCredit($data) {
+    public static function newCredit(array $data) {
         $self = new self;
-        return $self->new($data, "credit");
+        $cr = $self->new($data, "credit");
+        if($cr != NULL) {
+            \EvoPhp\Actions\Action::do('t2wAfterCredit');
+        }
+        return $cr;
     }
 
-    public static function newDebit($data) {
+    public static function newDebit(array $data) {
         $self = new self;
         return $self->new($data, "debit");
+    }
+
+    public static function creditAccount(array $data, string $account, int|NULL $userId = NULL) {
+        if($userId != NULL) {
+            $accObj = Accounts::getSingle(['ac_type' => $account, 'user_id' => $userId]);
+            if($accObj == NULL) return NULL;
+            $account = $accObj->ac_number;
+        }
+        $data['account'] = $account;
+        return self::newCredit($data);
+    }
+
+    public static function debitAccount(array $data, string $account, int|NULL $userId = NULL) {
+        if($userId != NULL) {
+            $accObj = Accounts::getSingle(['ac_type' => $account, 'user_id' => $userId]);
+            if($accObj == NULL) return NULL;
+            $account = $accObj->ac_number;
+        }
+        $data['account'] = $account;
+        return self::newDebit($data);
     }
 }
 ?>

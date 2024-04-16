@@ -79,6 +79,32 @@ $router->group('/t2w/api', function () use ($router) {
             return \Public\Modules\Tokens2Wealth\Classes\Loan::loanComponents($params['id']);
         });
     });
+
+    //Contribution
+    $router->post('/downlines/{account}/{level}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::downlines($params);
+        });
+    });
+
+    $router->post('/uplines/{account}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::uplines($params["account"]);
+        });
+    });
+
+    // term deposit
+    $router->post('/new-term-deposit', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::uplines($params["account"]);
+        });
+    });
 });
 
 //Pages

@@ -74,6 +74,19 @@ final class Loan extends Accounts
     
         return ($p*$t*$r)/100;
     }
+
+    public static function terminateAfterCredit($cr) {
+        if(substr($cr->account, 0, 2) != '321') return;
+        $balance = Accounts::getBalance($cr->account);
+        if($balance < 0) {
+            return;
+        }
+        self::terminateLoan($cr->account);
+    }
+
+    public static function terminateLoan($account) {
+        
+    }
 }
 
 ?>
