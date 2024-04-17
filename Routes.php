@@ -102,7 +102,7 @@ $router->group('/t2w/api', function () use ($router) {
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
-            return \Public\Modules\Tokens2Wealth\Classes\Contribution::uplines($params["account"]);
+            return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::new($params);
         });
     });
 });

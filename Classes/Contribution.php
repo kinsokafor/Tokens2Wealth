@@ -14,6 +14,25 @@ final class Contribution extends Accounts
         parent::__construct();
     }
 
+    public static function createTable() {
+        $self = new self;
+
+        $statement = "CREATE TABLE IF NOT EXISTS t2w_ewallet_transactions (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `amount` FLOAT(30,2) NOT NULL,
+                `ledger` VARCHAR(30) NOT NULL DEFAULT 'credit',
+                `account` VARCHAR(30) NOT NULL,
+                `pop` TEXT NOT NULL,
+                `narration` TEXT NOT NULL,
+                `classification` VARCHAR(30) NOT NULL,
+                `status` VARCHAR(30) NOT NULL DEFAULT 'unconfirmed',
+                `meta` JSON NOT NULL,
+                time_altered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_altered_by BIGINT NOT NULL
+                )";
+        $self->dbTable->query($statement)->execute();
+    }
+
     public static function downlines($params) {
         extract($params);
         $self = new self;
