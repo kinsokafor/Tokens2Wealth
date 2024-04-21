@@ -164,7 +164,9 @@ class Accounts
 
     public static function getBreakdown($ac_number, $upto = NULL) {
         $self = new self;
-        $upto = $upto == NULL ? date('Y-m-d h:i:s') : $upto;
+        $config = new Config();
+        $d = date_create("now", new \DateTimeZone($config->timezone));
+        $upto = $upto == NULL ? $d->format("Y-m-d H:i:s") : $upto;
         $requestYear = 2017;
         $CTY = $self->dbTable->select('t2w_transactions', 'IFNULL(SUM(amount), 0) as val')
                             ->whereBetween('time_altered', "$requestYear-01-01", $upto, 'ss')
@@ -180,12 +182,12 @@ class Accounts
                             ->execute()->row();
         $credits = $CTY !== NULL ? $CTY->val : 0;
         $debits = $DTY !== NULL ? $DTY->val : 0;
-        return ["credits" => $credits, "debits" => $debits];
+        return ["credits" => $credits, "debits" => $debits, "upto" => $upto];
     }
 
     public static function getCount($ac_number, $upto = NULL) {
         $self = new self;
-        $upto = $upto == NULL ? date('Y-m-d h:i:s') : $upto;
+        $upto = $upto == NULL ? date('Y-m-d H:i:s') : $upto;
         $CTY = $self->dbTable->select('t2w_transactions', 'COUNT(id) as val')
                             ->whereBetween('time_altered', "2018-01-01", $upto, 'ss')
                             ->where('status', 'successful', 's')

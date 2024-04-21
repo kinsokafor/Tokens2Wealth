@@ -9,27 +9,27 @@ $router->group('/t2w/api', function () use ($router) {
     $router->post('/balance/{ac_number}', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
-        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBalance($params['ac_number'], $params['date'] ?? NULL);
         });
     });
     $router->post('/break-down/{ac_number}', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
-        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBreakdown($params['ac_number'], $params['date'] ?? NULL);
         });
     });
     $router->post('/break-down/count/{ac_number}', function($params){
         $request = new Requests;
-        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getCount($params['ac_number']);
         });
     });
     $router->post('/get/accounts', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
-        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::get($params);
         });
     });
@@ -57,7 +57,7 @@ $router->group('/t2w/api', function () use ($router) {
     $router->post('/account/edit-status', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
-        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::editStatus($params['id'], $params['status']);
         });
     });
@@ -66,7 +66,7 @@ $router->group('/t2w/api', function () use ($router) {
     $router->post('/edit-thrift-amount', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
-        $request->evoAction()->auth(1,2,3)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::editThriftAmount($params['id'], $params['amount']);
         });
     });
@@ -97,6 +97,30 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    $router->post('/confirm-ewallet-payment', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::confirmPayment($params["id"]);
+        });
+    });
+
+    $router->post('/credit-ewallet', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::creditEWallet($params);
+        });
+    });
+
+    $router->post('/decline-ewallet-payment', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::declinePayment($params["id"]);
+        });
+    });
+
     // term deposit
     $router->post('/new-term-deposit', function($params){
         $request = new Requests;
@@ -119,7 +143,7 @@ $router->get('/t2w', function($params){
 
 $router->get('/t2w/a', function($params){
     $controller = new T2WController;
-    $controller->{'T2WAdmin/index'}($params)->auth(4,11)->setData(["pageTitle" => "Admin"]);
+    $controller->{'T2WAdmin/index'}($params)->auth(2,3,4,11)->setData(["pageTitle" => "Admin"]);
 }); 
 
 $router->get('/t2w/m', function($params){

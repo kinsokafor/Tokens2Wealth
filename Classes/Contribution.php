@@ -63,6 +63,74 @@ final class Contribution extends Accounts
         $meta["upline-level4"] ?? '', 
         $meta["upline-level5"] ?? '')->execute()->rows();
     }
+
+    public static function confirmPayment($id) {
+        $self = new self;
+        $session = Session::getInstance();
+        $data = $self->dbTable->select("t2w_ewallet_transactions")->where("id", $id)->execute()->row();
+        if($data->status != "unconfirmed") {
+            http_response_code(400);
+            return "Payment has already been confirmed or declined";
+        }
+        if($data->amount <= 0) {
+            http_response_code(400);
+            return "Invalid amount";
+        }
+        $data = array_merge((array) $data, ["status" => "successful"]);
+        $data["meta"] = array_merge(["pd_id" => $id], (array) json_decode($data["meta"]));
+        $credit = Wallets::newCredit($data);
+        if($credit == NULL) {
+            http_response_code(400);
+            return "Something went wrong.";
+        }
+        $self->dbTable->update("t2w_ewallet_transactions")
+            ->set("status", "confirmed")
+            ->metaSet(["approved_by" => $session->getResourceOwner()->user_id], [], (int) $id)
+            ->where("id", $id)
+            ->execute();
+        return $self->dbTable->select("t2w_ewallet_transactions")->where("id", $id)->execute()->row();
+    }
+
+    public static function declinePayment($id) {
+        $self = new self;
+        $session = Session::getInstance();
+        $data = $self->dbTable->select("t2w_ewallet_transactions")->where("id", $id)->execute()->row();
+        if($data->status != "unconfirmed") {
+            http_response_code(400);
+            return "Payment has already been confirmed or declined";
+        }
+        $self->dbTable->update("t2w_ewallet_transactions")
+            ->set("status", "declined")
+            ->metaSet(["approved_by", $session->getResourceOwner()->user_id])
+            ->where("id", $id)
+            ->execute();
+        return $self->dbTable->select("t2w_ewallet_transactions")->where("id", $id)->execute()->row();
+    }
+
+    public static function creditEWallet($data) {
+        extract($data);
+        $self = new self;
+        $session = Session::getInstance();
+        if((float) $amount <= 0) {
+            http_response_code(400);
+            return "Invalid amount entered";
+        }
+        $id = $self->dbTable->insert("t2w_ewallet_transactions", "dsssssssi", [
+            "amount" => (float) $amount,
+            "ledger" => "credit",
+            "account" => $account,
+            "pop" => $pop,
+            "narration" => $narration,
+            "classification" => $classification,
+            "meta" => json_encode([
+                "mode_of_payment" => $mode_of_payment,
+                "date_of_payment" => $date_of_payment
+            ]),
+            "status" => "unconfirmed",
+            "last_altered_by" => $session->getResourceOwner()->user_id
+        ])->execute();
+        return $self->dbTable->select("t2w_ewallet_transactions")->where("id", $id)->execute()->row();
+    }
 }
 
 ?>

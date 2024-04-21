@@ -5,7 +5,6 @@ namespace Public\Modules\Tokens2Wealth\Classes;
 use EvoPhp\Database\Session;
 use EvoPhp\Api\Operations;
 use EvoPhp\Resources\Options;
-use Public\Modules\Investment\Classes\Messages;
 
 final class TermDeposit extends Accounts
 {
@@ -34,7 +33,7 @@ final class TermDeposit extends Accounts
             $d = Wallets::debitAccount([
                 "amount" => $amount,
                 "narration" => "A new debit from your e-wallet $contribution->ac_number to fund your term deposit $account->ac_number"
-            ], $account->ac_number);
+            ], $contribution->ac_number);
 
             if($d == NULL) {
                 http_response_code(400);
@@ -44,7 +43,7 @@ final class TermDeposit extends Accounts
             $c = Wallets::creditAccount([
                 "amount" => $amount,
                 "narration" => "A new credit from your e-wallet $contribution->ac_number to fund your term deposit $account->ac_number"
-            ], $contribution->ac_number);
+            ], $account->ac_number);
 
             if($c == NULL) {
                 $self->dbTable->delete('t2w_transactions')->where('id', $d->id)->execute();

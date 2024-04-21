@@ -53,7 +53,7 @@ final class Wallets {
         $self = new self;
         $cr = $self->new($data, "credit");
         if($cr != NULL) {
-            \EvoPhp\Actions\Action::do('t2wAfterCredit');
+            \EvoPhp\Actions\Action::do('t2wAfterCredit', $cr);
         }
         return $cr;
     }

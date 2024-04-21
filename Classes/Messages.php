@@ -1,6 +1,6 @@
 <?php 
 
-namespace Public\Modules\Investment\Classes;
+namespace Public\Modules\Tokens2Wealth\Classes;
 
 use EvoPhp\Actions\Notifications\Notifications;
 use EvoPhp\Api\Config;

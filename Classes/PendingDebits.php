@@ -6,7 +6,6 @@ use EvoPhp\Resources\DbTable;
 use EvoPhp\Database\Session;
 use EvoPhp\Api\Operations;
 use EvoPhp\Api\Config;
-use Public\Modules\Investment\Classes\Messages;
 
 final class PendingDebits
 {
@@ -116,7 +115,7 @@ final class PendingDebits
         $credit = Wallets::newCredit([
             'narration' => $pd->narration,
             'amount' => $pd->amount,
-            'account' => $pd->debit_account
+            'account' => $pd->credit_account
         ]);
 
         if($credit == NULL) {
@@ -128,7 +127,7 @@ final class PendingDebits
         $this->dbTable->update('t2w_pending_debits')
                         ->set('status', 'paid')
                         ->set('last_altered_by', $session->getResourceOwner() ? (int) $session->getResourceOwner()->user_id : 0)
-                        ->set('time_altered', $d->format('Y-m-d h:i:s'))
+                        ->set('time_altered', $d->format('Y-m-d H:i:s'))
                         ->where('id', $pd->id)->execute(); 
     }
 }
