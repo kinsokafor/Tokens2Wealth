@@ -42,6 +42,27 @@ class Messages
         $not->toRole('super_admin', 'admin')->template()->mail()->log();
     }
 
+    public static function approvedTermDeposit($amount, $mv, $md, $userId) {
+        $config = new Config;
+        $message = "<p>Your new term deposit of NGN $amount is approved by the admin.
+                    This deposit is expected to mature on ".date('Y-m-d', $md)." 
+                    and an estimated maturity value of NGN $mv";
+        $not = new Notifications($message, "TERM DEPOSIT APPROVED - [$config->site_name]");
+        $not->to($userId)->template()->mail()->log();
+    }
+
+    public static function termDepositLiquidation($fullname, $amount, $premature, $withInterest, $interest_earned, $intent) {
+        $config = new Config;
+        $message = "<p>$fullname's term deposit of NGN $amount was liquidated successfully.</p>";
+        if(!$premature || $withInterest) {
+            $message .= "<p>Total interest earned over the period is NGN $interest_earned and interest was paid together with the principal amount.</p>";
+        } else {
+            $message .= "<p>However, the deposit was liquidated prematurely and so, no interest was paid to the member.</p>";
+        }
+        $intent = strtoupper($intent);
+        $not = new Notifications($message, "TERM DEPOSIT $intent - [$config->site_name]");
+        $not->toRole('super_admin', 'admin')->template()->mail()->log();
+    }
 }
 
 ?>

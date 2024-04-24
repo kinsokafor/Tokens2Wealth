@@ -20,6 +20,38 @@ $router->group('/t2w/api', function () use ($router) {
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBreakdown($params['ac_number'], $params['date'] ?? NULL);
         });
     });
+    $router->post('/balance/m/{ac_type}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
+            $session = \EvoPhp\Database\Session::getInstance();
+            $account = \Public\Modules\Tokens2Wealth\Classes\Accounts::getSingle([
+                "user_id" => $session->getResourceOwner()->user_id,
+                "ac_type" => $params['ac_type']
+            ]);
+            if($account == NULL) {
+                http_response_code(400);
+                return "No ".$params['ac_type']." account";
+            }
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBalance($account->ac_number, $params['date'] ?? NULL);
+        });
+    });
+    $router->post('/break-down/m/{ac_type}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
+            $session = \EvoPhp\Database\Session::getInstance();
+            $account = \Public\Modules\Tokens2Wealth\Classes\Accounts::getSingle([
+                "user_id" => $session->getResourceOwner()->user_id,
+                "ac_type" => $params['ac_type']
+            ]);
+            if($account == NULL) {
+                http_response_code(400);
+                return "No ".$params['ac_type']." account";
+            }
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getBreakdown($account->ac_number, $params['date'] ?? NULL);
+        });
+    });
     $router->post('/break-down/count/{ac_number}', function($params){
         $request = new Requests;
         $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
@@ -127,6 +159,46 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::new($params);
+        });
+    });
+
+    $router->post('/term-deposit/approve/{id}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::approve((int) $params['id']);
+        });
+    });
+
+    $router->post('/modify-term-deposit', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::modify($params);
+        });
+    });
+
+    $router->post('/term-deposit/decline/{id}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::liquidate((int) $params['id'], false, 'Declined');
+        });
+    });
+    
+    $router->post('/term-deposit/liquidate/{id}', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::liquidate((int) $params['id'], $params['withInterest'] ?? false);
+        });
+    });
+
+    $router->post('/m/top-up-term-deposit', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::topUp((float) $params['amount']);
         });
     });
 });
