@@ -63,6 +63,15 @@ class Messages
         $not = new Notifications($message, "TERM DEPOSIT $intent - [$config->site_name]");
         $not->toRole('super_admin', 'admin')->template()->mail()->log();
     }
+
+    public static function guarantorNomination($userId) {
+        $config = new Config;
+        $message = "A cooperator nominated you to surety his/her loan request. 
+        Please login to your portal to review, approve or decline the request. 
+        You are also advised not to surety a participant who is not well known to you.";
+        $not = new Notifications($message, "REQUEST TO SURETY A LOAN - [$config->site_name]");
+        $not->to($userId)->template()->mail()->log();
+    }
 }
 
 ?>

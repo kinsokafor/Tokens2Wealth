@@ -112,6 +112,23 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    $router->post('/legibility', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() {
+            $session = \EvoPhp\Database\Session::getInstance();
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::legibility($session->getResourceOwner()->user_id);
+        });
+    });
+
+    $router->post('/new-loan', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::new($params);
+        });
+    });
+
     //Contribution
     $router->post('/downlines/{account}/{level}', function($params){
         $request = new Requests;

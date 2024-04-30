@@ -31,6 +31,7 @@ final class Migrate
         \EvoPhp\Actions\Notifications\Log::maintainTable();
         \EvoPhp\Api\Cron::createTable();
         Cron::schedule('*/5 * * * *', '\Public\Modules\Tokens2Wealth\Classes\Migrate::transactions');
+        (new \EvoPhp\Resources\Options)->delete("require_guarantor");
     }
 
     static function dropTable($tableName) {
