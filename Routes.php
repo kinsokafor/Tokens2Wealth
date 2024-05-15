@@ -6,6 +6,27 @@ use Public\Modules\Tokens2Wealth\Classes\Migrate;
 
 //API End points
 $router->group('/t2w/api', function () use ($router) {
+    $router->post('/registration', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth()->execute(function() use ($params){
+            $params = array_merge($params, [
+                "username" => \Public\Modules\Tokens2Wealth\Classes\Operations::createMembershipId(),
+                "status" => "inactive",
+                "role" => "pending",
+                "temp_role" => "member",
+                "activation" => SHA1(rand(9999, 99999))
+            ]);
+            $user = new \EvoPhp\Resources\User;
+            $res = $user->new($params);
+            if(!$res) {
+                return $user->error;
+            }
+            return $res;
+        });
+    });
+
+    //balances
     $router->post('/balance/{ac_number}', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
@@ -129,6 +150,70 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    $router->post('/pending-guaranteed-loans', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() {
+            $session = \EvoPhp\Database\Session::getInstance();
+            $user = new \EvoPhp\Resources\User();
+            $meta = $user->get($session->getResourceOwner()->user_id);
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::pendingGuaranteedLoans($meta->username);
+        });
+    });
+
+    $router->post('/change-guarantor', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::changeGuarantor($params);
+        });
+    });
+
+    $router->post('/gaurantor-accept', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params) {
+            $session = \EvoPhp\Database\Session::getInstance();
+            $user = new \EvoPhp\Resources\User();
+            $meta = $user->get($session->getResourceOwner()->user_id);
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::guarantorAccept($params['id'], $meta->username);
+        });
+    });
+
+    $router->post('/gaurantor-decline', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params) {
+            $session = \EvoPhp\Database\Session::getInstance();
+            $user = new \EvoPhp\Resources\User();
+            $meta = $user->get($session->getResourceOwner()->user_id);
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::guarantorDecline($params['id'], $meta->username);
+        });
+    });
+
+    $router->post('/approve-loan', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params) {
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::approve((int) $params['id']);
+        });
+    });
+
+    $router->post('/decline-loan', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params) {
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::decline((int) $params['id']);
+        });
+    });
+
+    $router->post('/pending-loan/count', function(){
+        $request = new Requests;
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() {
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::pendingLoanCount();
+        });
+    });
+
     //Contribution
     $router->post('/downlines/{account}/{level}', function($params){
         $request = new Requests;
@@ -221,13 +306,13 @@ $router->group('/t2w/api', function () use ($router) {
 });
 
 //Pages
-$router->get('/t2w/migrate', function($params) {
+$router->get('/t2w/migrate', function() {
     Migrate::migrate();
 });
 
 $router->get('/t2w', function($params){
     $controller = new T2WController;
-    $controller->{'T2WMain/index'}($params)->auth()->setData(["pageTitle" => "Public"]);
+    $controller->{'T2WMain/index'}($params)->template("register")->auth()->setData(["pageTitle" => "Public"]);
 }); 
 
 $router->get('/t2w/a', function($params){
@@ -238,4 +323,21 @@ $router->get('/t2w/a', function($params){
 $router->get('/t2w/m', function($params){
     $controller = new T2WController;
     $controller->{'T2WMembers/index'}($params)->auth(6,7,8)->setData(["pageTitle" => "Members"]);
+});
+
+$router->get('/t2w/activate/{id}/{code}', function($params) {
+    $user = new \EvoPhp\Resources\User;
+    $meta = $user->get((int) $params['id']);
+    if($meta == NULL) {
+        die("Link error");
+    }
+    if(($meta->activation ?? "") != $params['code']) {
+        die("Incorrect activation code");
+    }
+    $user->update($meta->id, [
+        "status" => "active"
+    ]);
+    $config = new \EvoPhp\Api\Config;
+    $home = isset($config->links) ? $config->links->home ?? "/accounts" : $config->loginLink;
+    header("Location: $home");
 });

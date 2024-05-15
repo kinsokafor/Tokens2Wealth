@@ -39,15 +39,6 @@ final class Migrate
         $query->query("DROP TABLE $tableName")->execute();
     }
 
-    static function transactions($cron_id, $args = []) {
-        // $query = new Query;
-        // $users = $query->select('users', 'id')->execute()->rows();
-        // foreach($users as $user) {
-        //     (new User)->update((int) $user->id, ['password' => '123456789']);
-        // }
-        // Cron::cancel($cron_id);
-    }
-
     static function accountsToStore() {
         $posts = new Post;
         print_r($posts->get('credit,debit')->execute());

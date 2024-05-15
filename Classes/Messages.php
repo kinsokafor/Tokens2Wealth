@@ -66,11 +66,75 @@ class Messages
 
     public static function guarantorNomination($userId) {
         $config = new Config;
-        $message = "A cooperator nominated you to surety his/her loan request. 
+        $message = "<p>A cooperator nominated you to surety his/her loan request. 
         Please login to your portal to review, approve or decline the request. 
-        You are also advised not to surety a participant who is not well known to you.";
+        You are also advised not to surety a participant who is not well known to you.</p>";
         $not = new Notifications($message, "REQUEST TO SURETY A LOAN - [$config->site_name]");
         $not->to($userId)->template()->mail()->log();
+    }
+
+    public static function guarantorsAccepted($meta) {
+        $config = new Config;
+        $fullname = \EvoPhp\Api\Operations::getFullname($meta->user_id);
+        $message = "<p>Admin attention is needed. 
+            A cooperator '$fullname' just received 2 (two) guarantors approval for a loan request. 
+            Please login for final review and possible approval.</p>";
+        $not = new Notifications($message, "LOAN REQUEST - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail()->log();
+    }
+
+    public static function guarantorsDeclined($meta) {
+        $config = new Config;
+        $message = "<p>Oops, one of your nominated guarantors declined your request. 
+                    Login to the portal to see who.</p>";
+        $not = new Notifications($message, "GAURANTOR DECLINED YOUR APPLICATION - [$config->site_name]");
+        $not->to($meta->user_id)->template()->mail()->log();
+    }
+
+    public static function newLoan($meta) {
+        $config = new Config;
+        $fullname = \EvoPhp\Api\Operations::getFullname($meta->user_id);
+        $message = "<p>Admin attention is needed. 
+            A cooperator '$fullname' applied for a loan on amount that require no guarantor. 
+            Please login for final review and possible approval.</p>";
+        $not = new Notifications($message, "LOAN REQUEST - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail()->log();
+    }
+
+    public static function loanApproved($meta) {
+        $config = new Config;
+        $fullname = \EvoPhp\Api\Operations::getFullname($meta->user_id);
+        $message = "<p>Congratulations, the admin has just done the final 
+            verification of your loan request and approved. 
+            Your e-wallet has been credited to that effect. 
+            You can then request payout.</p> 
+            <p>Details of activities concerning this loan and its repayment 
+            can be viewed on your dashboard inside the loan page.</p> 
+            <p>Thanks for your cooperation.</p>";
+        $not = new Notifications($message, "LOAN REQUEST APPROVED - [$config->site_name]");
+        $not->to($meta->user_id)->template()->mail()->log();
+        $message = "<p>An admin has just authorized a new loan of ".number_format($meta->amount, 2)." for $fullname.</p> 
+        <p>Check your dashboard for complete details.</p>";
+        $not = new Notifications($message, "LOAN REQUEST APPROVED - [$config->site_name]");
+        $not->toRole("super_admin")->template()->log();
+    }
+
+    public static function loanDeclined($meta) {
+        $config = new Config;
+        $message = "<p>Sorry, your requested loan was not approved by the admin.</p> 
+            <p>Thanks for your cooperation.</p>";
+        $not = new Notifications($message, "LOAN REQUEST DECLINED - [$config->site_name]");
+        $not->to($meta->user_id)->template()->mail()->log();
+    }
+
+    public static function newUser($meta) {
+        $config = new Config;
+        $link = "$config->root/t2w/activate/$meta->id/$meta->activation";
+        $message = "<p>Welcome to $config->site_name. Your new account was registered but not yet active</p>";
+        $message .= "<p>To activate your account click the following button<br/></p>"; 
+        $message .= "<div><a href=\"$link\" style=\"background: green; color: #fff; padding: 7px; border-radius: 3px;\">ACTIVATE</a></div>";
+        $not = new Notifications($message, "LOAN REQUEST DECLINED - [$config->site_name]");
+        $not->to($meta->user_id)->template()->mail()->log();
     }
 }
 

@@ -7,6 +7,7 @@ use EvoPhp\Database\Session;
 use EvoPhp\Api\Operations;
 use EvoPhp\Resources\Options;
 use EvoPhp\Resources\User;
+use EvoPhp\Resources\Store;
 use EvoPhp\Api\Config;
 use EvoPhp\Resources\Meta;
 
@@ -93,6 +94,68 @@ final class Loan extends Accounts
         
     }
 
+    public static function changeGuarantor($params) {
+        extract($params);
+        $self = new self;
+        $loan = Accounts::getById($id);
+        if($loan == NULL) {
+            http_response_code(400);
+            return "Something went wrong";
+        }
+        $loan = $self::merge($loan);
+        $user = new User;
+        if(isset($gt1_id)) {
+            $meta = $user->get((string) $gt1_id);
+            if($meta == null) {
+                http_response_code(400);
+                return "$gt1_id is not a valid membership ID.";
+            }
+            if($loan->gt1_approval == "declined" && $loan->gt1_id == $gt1_id) {
+                http_response_code(400);
+                return "Please get another cooperator for your first guarantor. The person you submitted recently declined to suretee you.";
+            }
+            $verified = self::verifyGuarantor($meta, $loan->amount);
+            if($verified !== true) {
+                return $verified;
+            }
+            $metaSet["gt1_id"] = $gt1_id;
+            $metaSet["gt1_fullname"] = $gt1_fullname;
+            $metaSet["gt1_approval"] = "pending";
+            if($gt1_id != $loan->gt1_id)
+                Messages::guarantorNomination($meta->id);
+        }
+        if(isset($gt2_id)) {
+            if($gt2_id == ($gt1_id ?? $loan->gt1_id)) {
+                http_response_code(400);
+                return "You used the same guarantor.";
+            }
+            $meta = $user->get((string) $gt2_id);
+            if($meta == null) {
+                http_response_code(400);
+                return "$gt2_id is not a valid membership ID.";
+            }
+            if($loan->gt2_approval == "declined" && $loan->gt2_id == $gt2_id) {
+                http_response_code(400);
+                return "Please get another cooperator for your second guarantor. The person you submitted recently declined to suretee you.";
+            }
+            $verified = self::verifyGuarantor($meta, $loan->amount);
+            if($verified !== true) {
+                return $verified;
+            }
+            $metaSet["gt2_id"] = $gt2_id;
+            $metaSet["gt2_fullname"] = $gt2_fullname;
+            $metaSet["gt2_approval"] = "pending";
+            if($gt2_id != $loan->gt2_id)
+                Messages::guarantorNomination($meta->id);
+        }
+        $self->dbTable->update("t2w_accounts")
+            ->metaSet($metaSet, [], $id, "t2w_accounts")
+            ->where("id", $id)
+            ->execute();
+
+        return Accounts::getById($id);
+    }
+
     public static function new($params) {
         extract($params);
         $self = new self;
@@ -161,7 +224,11 @@ final class Loan extends Accounts
             ->where("id", $account->id)
             ->execute();
 
-        return Accounts::getById($account->id);
+        $loan = Accounts::getById($account->id);
+        if(!isset($gt1_id) && !isset($gt2_id)) {
+            Messages::newLoan($loan);
+        }
+        return $loan;
     }
 
     public static function verifyGuarantor($meta, $loanAmount) {
@@ -234,6 +301,75 @@ final class Loan extends Accounts
                             JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt2_id')) LIKE ?
                         ) AND `status` LIKE 'approved'";
         return $self->dbTable->query($statement, 'ss', $membershipId, $membershipId)->execute()->rows();
+    }
+
+    public static function pendingGuaranteedLoans($membershipId) {
+        $self = new self;
+        $statement = "SELECT t1.id, user_id, ac_number, ac_type, meta, 
+            time_altered, last_altered_by, t2.email, t2.username, t2.usermeta 
+            FROM t2w.t2w_accounts AS t1
+            LEFT JOIN
+            (SELECT id, email, username, meta as usermeta FROM t2w.users) as t2
+            ON t2.id = t1.user_id WHERE
+            `ac_type` = 'loan' AND (
+                (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_id')) LIKE ? AND
+                JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_approval')) LIKE 'pending') 
+                OR
+                (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt2_id')) LIKE ? AND
+                JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt2_approval')) LIKE 'pending')
+            ) AND `status` LIKE 'in process'
+            ";
+        return $self->dbTable->query($statement, 'ss', $membershipId, $membershipId)->execute()->rows();
+    }
+
+    public static function guarantorAccept($id, $membershipId) {
+        $self = new self;
+        $loan = Accounts::getById($id);
+        if($loan == NULL) {
+            http_response_code(400);
+            return "Invalid submission";
+        }
+        $loan = self::merge($loan);
+        $self->dbTable->update("t2w_accounts");
+        if($loan->gt1_id == $membershipId) {
+            $self->dbTable->metaSet(
+                ["gt1_approval" => "approved"], [], $id, "t2w_accounts");
+        }
+        if($loan->gt2_id == $membershipId) {
+            $self->dbTable->metaSet(
+                ["gt2_approval" => "approved"], [], $id, "t2w_accounts");
+        }
+        $self->dbTable->where("id", $loan->id)->execute();
+        $loan = Accounts::getById($id);
+        $loan = self::merge($loan);
+        if($loan->gt1_approval == "approved" && $loan->gt2_approval == "approved") {
+            Messages::guarantorsAccepted($loan);
+        }
+        return $loan;
+    }
+
+    public static function guarantorDecline($id, $membershipId) {
+        $self = new self;
+        $loan = Accounts::getById($id);
+        if($loan == NULL) {
+            http_response_code(400);
+            return "Invalid submission";
+        }
+        $loan = self::merge($loan);
+        $self->dbTable->update("t2w_accounts");
+        if($loan->gt1_id == $membershipId) {
+            $self->dbTable->metaSet(
+                ["gt1_approval" => "declined"], [], $id, "t2w_accounts");
+        }
+        if($loan->gt2_id == $membershipId) {
+            $self->dbTable->metaSet(
+                ["gt2_approval" => "declined"], [], $id, "t2w_accounts");
+        }
+        $self->dbTable->where("id", $loan->id)->execute();
+        Messages::guarantorsDeclined($loan);
+        $loan = Accounts::getById($id);
+        $loan = self::merge($loan);
+        return $loan;
     }
         
     /**
@@ -318,6 +454,101 @@ final class Loan extends Accounts
         $thriftBalance = Accounts::getBalance($thrift->ac_number);
 
         return ($thriftBalance*($percentageLoanable/100) + self::guarantorLiability($uMeta->username));
+    }
+
+    public static function pendingLoanCount() {
+        $self = new self;
+        $statement = "SELECT COUNT(id) AS count 
+            FROM t2w.t2w_accounts 
+            WHERE
+            `ac_type` = 'loan' AND (
+                JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_approval')) LIKE 'approved' 
+                AND
+                JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt2_approval')) LIKE 'approved'
+            ) AND `status` LIKE 'in process'
+        ";
+        return $self->dbTable->query($statement)->execute()->row()->count;
+    }
+
+    public static function approve($id) {
+        $self = new self;
+        $loan = $self::getById($id);
+        $loan = $self::merge($loan);
+        if($loan->status != "in process") {
+            http_response_code(400);
+            return "Something went wrong";
+        }
+        $percCharge = Options::get("percentage_charge_on_loan") ?? 1;
+        $charge = 0.01 * $percCharge * $loan->amount;
+        $interest = $self::getInterest((object) [
+            "rate" => Options::get("loan_rate"),
+            "tenure" => $loan->tenure,
+            "amount" => $loan->amount
+        ]);
+        Wallets::debitAccount(
+            [
+                "narration" => "Being sum approved for loan plus the interest calculated against $loan->rate % rate",
+                "amount" => ($interest + $loan->amount)
+            ], $loan->ac_number
+        );
+        Wallets::creditAccount(
+            [
+                "narration" => "Being sum approved for loan",
+                "amount" => $loan->amount
+            ], "contribution", $loan->user_id
+        );
+        Wallets::debitAccount(
+            [
+                "narration" => "Being sum charged at $percCharge % rate of total loan amount.",
+                "amount" => $charge
+            ], "contribution", $loan->user_id
+        );
+        $config = new Config();
+        $d = new \DateTime('now', new DateTimeZone($config->timezone));
+        $session = Session::getInstance();
+        $self->dbTable->update("t2w_accounts")
+            ->set("status", "approved")
+            ->set("time_altered", $d->format('Y-m-d h:i:s'))
+            ->set("last_altered_by", $session->getResourceOwner()->user_id)
+            ->metaSet([
+                "rate" => $loan->rate,
+                "moratorium" => Options::get("moratorium") ?? 1,
+                "amount" => (float) $loan->amount,
+                "tenure" => $loan->tenure,
+                "plan" => "Against Thrift Savings",
+                "repayment_sum" => ($interest + $loan->amount)
+            ], [], $loan->id, "t2w_accounts")
+            ->where("id", $loan->id)->execute();
+        $store = new Store;
+        $store->new("loan", [
+            "amount" => (float) $loan->amount,
+            "repayment" => ($interest + $loan->amount),
+            "beneficiary" => $loan->user_id,
+            "rate" => $loan->rate,
+            "status" => 'pending',
+            "tenure" => $loan->tenure
+        ]);
+        Messages::loanApproved($loan);
+        $self->log(Operations::getFullname($loan->user_id)."'s loan request approved.");
+        return $self::getById($id);
+    }
+
+    public static function decline($id) {
+        $self = new self;
+        $loan = $self::getById($id);
+        $self->dbTable->update("t2w_accounts")
+            ->set("status", "declined")
+            ->metaSet([
+                "rate" => 0,
+                "moratorium" => 1,
+                "amount" => 0,
+                "tenure" => 0,
+                "plan" => "",
+                "repayment_sum" => 0
+            ], [], $loan->id, "t2w_accounts")
+            ->where("id", $loan->id)->execute();
+        Messages::loanDeclined($loan);
+        $self->log(Operations::getFullname($loan->user_id)."'s loan request declined.");
     }
 
 }
