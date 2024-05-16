@@ -10,6 +10,15 @@ $router->group('/t2w/api', function () use ($router) {
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth()->execute(function() use ($params){
+            $user = new \EvoPhp\Resources\User;
+            if(strtolower($params['referral']) == strtolower($params['email'])) {
+                http_response_code(400);
+                return 'You cannot refer yourself.';
+            }
+            if($user->get((string) $params['referral']) == NULL) {
+                http_response_code(400);
+                return "Your referrer is invalid. Please Contact the admin.";
+            }
             $params = array_merge($params, [
                 "username" => \Public\Modules\Tokens2Wealth\Classes\Operations::createMembershipId(),
                 "status" => "inactive",
@@ -17,12 +26,24 @@ $router->group('/t2w/api', function () use ($router) {
                 "temp_role" => "member",
                 "activation" => SHA1(rand(9999, 99999))
             ]);
+            $request = new Requests;
+            $request->user($params)->auth();
+            return $request->response;
+        });
+    });
+    
+    $router->post('/upload-pop/admin', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             $user = new \EvoPhp\Resources\User;
-            $res = $user->new($params);
-            if(!$res) {
-                return $user->error;
-            }
-            return $res;
+            $user->update($params['user_id'], [
+                "payment_status" => "paid",
+                "pop" => $params["pop"],
+                "date_of_payment" => $params['date_of_payment'],
+                "mode_of_payment" => "admin confirmation"
+            ]);
+            return $user->get($params['user_id']);
         });
     });
 
@@ -323,6 +344,11 @@ $router->get('/t2w/a', function($params){
 $router->get('/t2w/m', function($params){
     $controller = new T2WController;
     $controller->{'T2WMembers/index'}($params)->auth(6,7,8)->setData(["pageTitle" => "Members"]);
+});
+
+$router->get('/t2w/pending', function($params){
+    $controller = new T2WController;
+    $controller->{'T2WPending/index'}($params)->auth(10)->setData(["pageTitle" => "Pending Members"]);
 });
 
 $router->get('/t2w/activate/{id}/{code}', function($params) {

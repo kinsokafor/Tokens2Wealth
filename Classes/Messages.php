@@ -48,7 +48,7 @@ class Messages
                     This deposit is expected to mature on ".date('Y-m-d', $md)." 
                     and an estimated maturity value of NGN $mv";
         $not = new Notifications($message, "TERM DEPOSIT APPROVED - [$config->site_name]");
-        $not->to($userId)->template()->mail()->log();
+        $not->to($userId)->template()->mail("sendmail")->log();
     }
 
     public static function termDepositLiquidation($fullname, $amount, $premature, $withInterest, $interest_earned, $intent) {
@@ -88,7 +88,7 @@ class Messages
         $message = "<p>Oops, one of your nominated guarantors declined your request. 
                     Login to the portal to see who.</p>";
         $not = new Notifications($message, "GAURANTOR DECLINED YOUR APPLICATION - [$config->site_name]");
-        $not->to($meta->user_id)->template()->mail()->log();
+        $not->to($meta->user_id)->template()->mail("sendmail")->log();
     }
 
     public static function newLoan($meta) {
@@ -112,7 +112,7 @@ class Messages
             can be viewed on your dashboard inside the loan page.</p> 
             <p>Thanks for your cooperation.</p>";
         $not = new Notifications($message, "LOAN REQUEST APPROVED - [$config->site_name]");
-        $not->to($meta->user_id)->template()->mail()->log();
+        $not->to($meta->user_id)->template()->mail("sendmail")->log();
         $message = "<p>An admin has just authorized a new loan of ".number_format($meta->amount, 2)." for $fullname.</p> 
         <p>Check your dashboard for complete details.</p>";
         $not = new Notifications($message, "LOAN REQUEST APPROVED - [$config->site_name]");
@@ -124,7 +124,7 @@ class Messages
         $message = "<p>Sorry, your requested loan was not approved by the admin.</p> 
             <p>Thanks for your cooperation.</p>";
         $not = new Notifications($message, "LOAN REQUEST DECLINED - [$config->site_name]");
-        $not->to($meta->user_id)->template()->mail()->log();
+        $not->to($meta->user_id)->template()->mail("sendmail")->log();
     }
 
     public static function newUser($meta) {

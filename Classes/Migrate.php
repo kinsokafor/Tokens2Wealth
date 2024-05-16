@@ -3,9 +3,8 @@
 namespace Public\Modules\Tokens2Wealth\Classes;
 
 use EvoPhp\Database\Query;
-use EvoPhp\Resources\User;
+use EvoPhp\Resources\Options;
 use EvoPhp\Resources\Post;
-use EvoPhp\Api\Cron;
 
 final class Migrate
 {
@@ -23,15 +22,17 @@ final class Migrate
         self::dropTable("result_pins");
         self::dropTable("visitors");
         self::dropTable("filters");
-        \EvoPhp\Resources\Options::maintainTable();
+        Options::maintainTable();
         \EvoPhp\Resources\Post::maintainTable();
         \EvoPhp\Resources\User::maintainTable();
         \EvoPhp\Resources\Records::maintainTable();
         \EvoPhp\Actions\Action::maintainTable();
         \EvoPhp\Actions\Notifications\Log::maintainTable();
         \EvoPhp\Api\Cron::createTable();
-        Cron::schedule('*/5 * * * *', '\Public\Modules\Tokens2Wealth\Classes\Migrate::transactions');
-        (new \EvoPhp\Resources\Options)->delete("require_guarantor");
+        $options = new Options;
+        $options->delete("require_guarantor");
+        $options->delete("crd");
+        $options->delete("regava");
     }
 
     static function dropTable($tableName) {
