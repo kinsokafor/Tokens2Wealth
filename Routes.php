@@ -385,6 +385,22 @@ $router->group('/t2w/api', function () use ($router) {
             return \Public\Modules\Tokens2Wealth\Classes\Shares::sell($params);
         });
     });
+
+    $router->post('/shares/approve', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Shares::approve($params["id"]);
+        });
+    });
+
+    $router->post('/shares/decline', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Shares::decline($params["id"]);
+        });
+    });
 });
 
 //Pages

@@ -29,6 +29,14 @@ final class Shares extends Accounts
 
     public static function availableSharesToIndividual($user_id) {
         $self = new self;
+        $store = new Store();
+        $pendingBuy = $store->getCount("buy_share")
+                            ->where("approval", 0)
+                            ->where("user_id", $user_id)
+                            ->execute();
+        if($pendingBuy > 0) {
+            return 0;
+        }
         $ac = $self::getSingle(["user_id" => $user_id, "ac_type" => "share"]);
         $balance = $ac == NULL ? 0 : $ac->balance;
         $totalAvailable = $self::availableShares();
@@ -119,6 +127,130 @@ final class Shares extends Accounts
 
             return $self::getById($account->id);
         }
+    }
+
+    public static function approve($id) {
+        $self = new self;
+        $store = new Store;
+        $data = $store::merge($store->get($id)->execute());
+        
+        switch($data->type) {
+            case "buy_share":
+                $account = $self::createAccount(
+                    $data->user_id,
+                    "share",
+                    true
+                );
+
+                $d = Wallets::creditAccount([
+                    "amount" => $data->units,
+                    "narration" => "Being units of shares bought."
+                ], $account->ac_number);
+    
+                if($d == NULL) {
+                    http_response_code(400);
+                    return "Failed";
+                }
+
+                $store->update()->metaSet([
+                    "approval" => 1
+                ], [], $data->id)->execute();
+
+                Messages::approveBuy($data->user_id, $data->units);
+
+                $log = new AdminLog();
+
+                $log->log(Operations::getFullname($data->user_id)."'s request to buy $data->units units of shares was authorized by admin");
+            break;
+
+            case "sell_share":
+                $contribution = Accounts::getSingle(['ac_type' => 'contribution', 'user_id' => $data->user_id]);
+
+                $d = Wallets::creditAccount([
+                    "amount" => $data->amount,
+                    "narration" => "Being value for the units of shares sold."
+                ], $contribution->ac_number);
+    
+                if($d == NULL) {
+                    http_response_code(400);
+                    return "Failed";
+                }
+
+                $store->update()->metaSet([
+                    "approval" => 1
+                ], [], $data->id)->execute();
+
+                $log = new AdminLog();
+
+                $log->log(Operations::getFullname($data->user_id)."'s request to sell $data->units units of shares was authorized by admin.");
+            break;
+
+            default:
+            break;
+        }
+
+        return $store->get($id)->execute();
+    }
+
+    public static function decline($id) {
+        $self = new self;
+        $store = new Store;
+        $data = $store::merge($store->get($id)->execute());
+        
+        switch($data->type) {
+            case "buy_share":
+                $contribution = Accounts::getSingle(['ac_type' => 'contribution', 'user_id' => $data->user_id]);
+
+                $d = Wallets::creditAccount([
+                    "amount" => $data->amount,
+                    "narration" => "Reversal: Being payment for $data->units units of shares"
+                ], $contribution->ac_number);
+    
+                if($d == NULL) {
+                    http_response_code(400);
+                    return "Failed";
+                }
+
+                $store->delete("buy_share")->where("id", $data->id)->execute();
+
+                Messages::declineBuy($data->user_id, $data->units);
+
+                $log = new AdminLog();
+
+                $log->log(Operations::getFullname($data->user_id)."'s request to sell $data->units units of shares was declined by admin.");
+            break;
+
+            case "sell_share":
+                $account = $self::createAccount(
+                    $data->user_id,
+                    "share",
+                    true
+                );
+
+                $d = Wallets::creditAccount([
+                    "amount" => $data->units,
+                    "narration" => "Reversal: Being units of shares sold."
+                ], $account->ac_number);
+    
+                if($d == NULL) {
+                    http_response_code(400);
+                    return "Failed";
+                }
+
+                $store->delete("sell_share")->where("id", $data->id)->execute();
+
+                Messages::declineSell($data->user_id, $data->units);
+
+                $log = new AdminLog();
+
+                $log->log(Operations::getFullname($data->user_id)."'s request to buy $data->units units of shares was declined by admin");
+            break;
+
+            default:
+            break;
+        }
+
+        return $store->get($id)->execute();
     }
 }
 

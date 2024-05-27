@@ -150,6 +150,29 @@ class Messages
         $not = new Notifications($message, "SHARES: SELLING - [$config->site_name]");
         $not->toRole("super_admin")->template()->mail()->log();
     }
+
+    public static function approveBuy($userId, $units) {
+        $config = new Config;
+        $message = "<p>Your request to buy $units units of shares has been authorized. 
+        Thank you for investing in our shares. You are now a shareholder in the cooperative
+         and can now earn dividends on your shares.</p>";
+        $not = new Notifications($message, "SHARES: BUY - [$config->site_name]");
+        $not->to($userId)->template()->mail()->log();
+    }
+
+    public static function declineBuy($userId, $units) {
+        $config = new Config;
+        $message = "<p>Your request to buy $units units of shares was declined.</p>";
+        $not = new Notifications($message, "SHARES: BUYING DECLINED - [$config->site_name]");
+        $not->to($userId)->template()->mail()->log();
+    }
+
+    public static function declineSell($userId, $units) {
+        $config = new Config;
+        $message = "<p>Your request to sell $units units of shares was declined.</p>";
+        $not = new Notifications($message, "SHARES: SELLING DECLINED - [$config->site_name]");
+        $not->to($userId)->template()->mail()->log();
+    }
 }
 
 ?>
