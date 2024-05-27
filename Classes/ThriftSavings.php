@@ -25,7 +25,7 @@ final class ThriftSavings extends Accounts
         } else {
             $self->dbTable->set("status", "active");
         }
-        $self->dbTable->metaSet(["amount" => $amount], [], $id, "t2w_accounts")
+        $self->dbTable->metaSet(["amount" => $amount, "last_updated" => time()], [], $id, "t2w_accounts")
             ->where("id", (int) $id)->execute();
 
         $account = self::getById($id);
@@ -39,6 +39,27 @@ final class ThriftSavings extends Accounts
         $now = time();
         $rtsd = Options::get('rt_settlement');
         return date("Y-m-$rtsd 00:00:00", $now);
+    }
+
+    public static function new($params) {
+        $session = Session::getInstance();
+        if(!$session->getResourceOwner()) return null;
+        $user_id = $session->getResourceOwner()->user_id;
+        extract($params);
+        $self = new self;
+        $account = $self::createAccount(
+            $user_id,
+            "regular_thrift",
+            true
+        );
+        $self->dbTable->update('t2w_accounts')
+                        ->set('status', 'active')
+                        ->metaSet([
+                            "amount" => (double) $params['amount'],
+                            "last_updated" => time()
+                        ], [], $account->id, "t2w_accounts")
+                        ->where('id', $account->id)->execute();
+        return Accounts::getById($account->id);
     }
 }
 

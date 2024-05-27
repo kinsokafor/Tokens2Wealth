@@ -18,7 +18,7 @@ class Accounts
     SELECT id, user_id, ac_number, ac_type, status, meta, 
         time_altered, last_altered_by, 
         (IFNULL(t2.credits, 0) - IFNULL(t3.debits, 0)) as balance, 
-        IFNULL(t2.credits, 0) as credits, IFNULL(t3.debits, 0) as debits FROM t2w.t2w_accounts as t1 
+        IFNULL(t2.credits, 0) as credits, IFNULL(t3.debits, 0) as debits FROM t2w_accounts as t1 
     LEFT JOIN 
         (   SELECT IFNULL(SUM(amount), 0) as credits, account 
         FROM t2w.t2w_transactions WHERE ledger = 'credit' AND status = 'successful' GROUP BY account) as t2
@@ -139,7 +139,7 @@ class Accounts
         $meta = $self::getById($id);
 
         if($meta != NULL && $ac_type == 'contribution') {
-            self::log(Operations::getFullname($meta).' Account was activated');
+            $self->log(Operations::getFullname($meta).' Account was activated');
             // $info = 'Your new e-wallet was successfully opened and your wallet number is '.$account_number;
             // if($user_id !== 0)
             //     inform_user($user_id, $info, "New e-Wallet - ".$account_number, WEBADDR, EMAIL, NOTIFICATION, SMS);

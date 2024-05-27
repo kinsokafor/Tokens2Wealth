@@ -15,9 +15,11 @@ $router->group('/t2w/api', function () use ($router) {
                 http_response_code(400);
                 return 'You cannot refer yourself.';
             }
-            if($user->get((string) $params['referral']) == NULL) {
-                http_response_code(400);
-                return "Your referrer is invalid. Please Contact the admin.";
+            if(trim($params['referral']) != "") {
+                if($user->get((string) $params['referral']) == NULL) {
+                    http_response_code(400);
+                    return "Your referrer is invalid. Please Contact the admin.";
+                }
             }
             $params = array_merge($params, [
                 "username" => \Public\Modules\Tokens2Wealth\Classes\Operations::createMembershipId(),
@@ -44,6 +46,14 @@ $router->group('/t2w/api', function () use ($router) {
                 "mode_of_payment" => "admin confirmation"
             ]);
             return $user->get($params['user_id']);
+        });
+    });
+
+    $router->post('/approve-user', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::approveUser((int) $params['id']);
         });
     });
 
@@ -142,6 +152,30 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::editThriftAmount($params['id'], $params['amount']);
+        });
+    });
+
+    $router->post('/user/edit-thrift-amount', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::editThriftAmount($params['id'], $params['amount']);
+        });
+    });
+
+    $router->post('/thrift/next-settlement-date', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9,10)->execute(function() {
+            return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::nextSettlementDate();
+        });
+    });
+
+    $router->post('/new-thrift-savings', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::new($params);
         });
     });
 
@@ -322,6 +356,33 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\TermDeposit::topUp((float) $params['amount']);
+        });
+    });
+
+    //shares
+    $router->post('/m/available-shares', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
+            $session = \EvoPhp\Database\Session::getInstance();
+            $user = new \EvoPhp\Resources\User();
+            return \Public\Modules\Tokens2Wealth\Classes\Shares::availableSharesToIndividual($session->getResourceOwner()->user_id);
+        });
+    });
+
+    $router->post('/shares/buy', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Shares::buy($params);
+        });
+    });
+
+    $router->post('/shares/sell', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Shares::sell($params);
         });
     });
 });

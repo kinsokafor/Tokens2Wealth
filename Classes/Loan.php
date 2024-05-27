@@ -407,7 +407,7 @@ final class Loan extends Accounts
         }
 
         if($loan != null) {
-            if($loan->status == "active" || $loan->status == "in process") {
+            if($loan->status == "active" || $loan->status == "approved" || $loan->status == "in process") {
                 http_response_code(400);
                 return "You have an active or processing loan. Sorry you cannot request again";
             }

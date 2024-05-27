@@ -17,9 +17,9 @@ final class TermDeposit extends Accounts
 
     public static function new($params) {
         $session = Session::getInstance();
-        $user_id = $session->getResourceOwner()->user_id;
         if(!$session->getResourceOwner()) return null;
         extract($params);
+        $user_id = $session->getResourceOwner()->user_id;
         $self = new self;
         $account = $self::createAccount(
             $user_id,

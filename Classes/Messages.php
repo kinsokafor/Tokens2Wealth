@@ -136,6 +136,20 @@ class Messages
         $not = new Notifications($message, "LOAN REQUEST DECLINED - [$config->site_name]");
         $not->to($meta->user_id)->template()->mail()->log();
     }
+
+    public static function buyShare($units) {
+        $config = new Config;
+        $message = "<p>A member just requested to buy $units units of share. Please login to review and approve or decline.</p>";
+        $not = new Notifications($message, "SHARES: BUYING - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail()->log();
+    }
+
+    public static function sellShare($units) {
+        $config = new Config;
+        $message = "<p>A member just requested to sell $units units of share. Please login to review and approve or decline.</p>";
+        $not = new Notifications($message, "SHARES: SELLING - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail()->log();
+    }
 }
 
 ?>
