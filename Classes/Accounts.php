@@ -270,6 +270,12 @@ class Accounts
 
         return $account;
     }
+
+    public static function getGeneralSystemAccount() {
+        $self = new self;
+        return $self->dbTable->select("t2w_accounts", "IFNULL(ac_number, '') as ac_number")
+            ->where("ac_type", "general_system")->execute()->row()->ac_number;
+    }
 }
 
 ?>

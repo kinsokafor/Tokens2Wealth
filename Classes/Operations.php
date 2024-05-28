@@ -42,6 +42,10 @@ final class Operations
         $meta = $user->get((int) $userId);
         Messages::newUser($meta);
     }
+
+    public static function commaSeparatedStringToArray($value) {
+        return \explode(',', $value);
+    }
 }
 
 ?>

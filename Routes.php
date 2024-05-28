@@ -57,6 +57,13 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    $router->post('/get-general-system-account', function(){
+        $request = new Requests;
+        $request->evoAction()->auth(1,2)->execute(function(){
+            return \Public\Modules\Tokens2Wealth\Classes\Accounts::getGeneralSystemAccount();
+        });
+    });
+
     //balances
     $router->post('/balance/{ac_number}', function($params){
         $request = new Requests;
