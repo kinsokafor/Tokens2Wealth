@@ -276,6 +276,22 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    $router->post('/settle-loan', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params) {
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::settleBalance($params['ac_number'], (int) $params['user_id']);
+        });
+    });
+
+    $router->post('/recover-loan', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params) {
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::recover($params['ac_number'], (int) $params['user_id']);
+        });
+    });
+
     //Contribution
     $router->post('/downlines/{account}/{level}', function($params){
         $request = new Requests;
@@ -372,7 +388,6 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(6,7,8)->execute(function() use ($params){
             $session = \EvoPhp\Database\Session::getInstance();
-            $user = new \EvoPhp\Resources\User();
             return \Public\Modules\Tokens2Wealth\Classes\Shares::availableSharesToIndividual($session->getResourceOwner()->user_id);
         });
     });
@@ -406,6 +421,50 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Shares::decline($params["id"]);
+        });
+    });
+
+    //payout
+    $router->post('/m/okay-to-request-payout', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8,9)->execute(function() use ($params){
+            $session = \EvoPhp\Database\Session::getInstance();
+            return \Public\Modules\Tokens2Wealth\Classes\Payout::okToRequest($session->getResourceOwner()->user_id);
+        });
+    });
+
+    $router->post('/m/request-payout', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8,9)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Payout::new((float) $params['amount']);
+        });
+    });
+
+    $router->post('/payout/confirm', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Payout::markAsPaid($params);
+        });
+    });
+
+    $router->post('/payout/decline', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Payout::decline((int) $params['id']);
+        });
+    });
+
+    //operations
+    $router->post('/m/profile-completeness', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(6,7,8,9)->execute(function() use ($params){
+            $session = \EvoPhp\Database\Session::getInstance();
+            return \Public\Modules\Tokens2Wealth\Classes\Operations::profileCompleteness($session->getResourceOwner()->user_id);
         });
     });
 });

@@ -81,19 +81,6 @@ final class Loan extends Accounts
         return ($p*$t*$r)/100;
     }
 
-    public static function terminateAfterCredit($cr) {
-        if(substr($cr->account, 0, 2) != '321') return;
-        $balance = Accounts::getBalance($cr->account);
-        if($balance < 0) {
-            return;
-        }
-        self::terminate($cr->account);
-    }
-
-    public static function terminate($account) {
-        
-    }
-
     public static function changeGuarantor($params) {
         extract($params);
         $self = new self;
@@ -551,6 +538,261 @@ final class Loan extends Accounts
         $self->log(Operations::getFullname($loan->user_id)."'s loan request declined.");
     }
 
+    public static function terminateAfterCredit($cr) {
+        if(substr($cr->account, 0, 2) != '321') return;
+        $balance = Accounts::getBalance($cr->account);
+        if($balance < 0) {
+            return;
+        }
+        self::terminate($cr->account);
+    }
+
+    public static function terminate($ac_number) {
+        set_time_limit(200);
+        $self = new self;
+        $account = $self::getByNumber(["ac_number" => $ac_number]);
+        $account = $self->dbTable::merge($account);
+        $update = $self->dbTable->update("t2w_accounts")
+                        ->metaSet([
+                            'gt1_id' => '',
+                            'gt2_id' => '',
+                            'gt1_approval' => '',
+                            'gt2_approval' => '',
+                            'level' => '',
+                            'gt1_fullname' => '',
+                            'gt2_fullname' => '',
+                            'rate' => '',
+                            'plan' => '',
+                            'amount' => 0
+                        ], [], $account->id, "t2w_accounts");
+        if($account->status != "defaulted") {
+            $update->set("status", "cleared", "s");
+        }
+        $update->where("id", $account->id)->execute();
+        $store = new Store;
+        $loan = $store->select("loan")
+                    ->where("beneficiary", $account->user_id)
+                    ->where("status", "pending")
+                    ->execute()->row();
+        $store->update()->metaSet([
+            'status' => 'cleared', 
+            'cleared_on' => time(), 
+            'tenure' => $account->tenure, 
+            'rate' => $account->rate
+        ], [], $loan->id)->where("id", $loan->id)->execute();
+        $pd = new PendingDebits();
+        $pendingCredits = $pd->getPendingCredit($account->ac_number, "loan");
+        if(Operations::count($pendingCredits)) {
+            foreach ($pendingCredits as $pc) {
+                $self->dbTable->delete("t2w_pending_debits")
+                    ->where("id", $pc->id)->execute();
+            }
+        }
+        Messages::terminateLoan($account);
+        return $self::getByNumber(["ac_number" => $ac_number]);
+    }
+
+    public static function settleBalance($ac_number, int|NULL $userId = NULL) {
+        $self = new self;
+        $loanBalance = $self::getBalance($ac_number);
+        if($userId == NULL) {
+            $account = $self::getByNumber(["ac_number" => $ac_number]);
+            $userId = $account->user_id;
+        }
+        $contribution = $self::getSingle(["user_id" => $userId, "ac_type" => "contribution"]);
+        $balance = $self::getBalance($contribution->ac_number);
+        if(($balance + $loanBalance) < 0) {
+            http_response_code(400);
+            return "The balance in the e-wallet is not sufficient to clear the loan balance";
+        }
+        $amount = $loanBalance * -1;
+        Wallets::debitAccount(
+            [
+                "narration" => "Being sum deducted to clear your loan balance.",
+                "amount" => $amount
+            ], $contribution->ac_number
+        );
+
+        Wallets::creditAccount(
+            [
+                "narration" => "Being sum credited to clear your loan balance.",
+                "amount" => $amount
+            ], $ac_number
+        );
+
+        return $self::terminate($ac_number);
+    }
+
+    public static function recover($ac_number, int|NULL $userId = NULL) {
+        $self = new self;
+        $loanBalance = $checkAmount = $self::getBalance($ac_number);
+        if($userId == NULL) {
+            $account = $self::getByNumber(["ac_number" => $ac_number]);
+            $userId = $account->user_id;
+        }
+        $checkAmount = $self::loanRecoveryProcess($userId, $checkAmount, $ac_number);
+        Messages::loanRecovery($userId, $loanBalance, $checkAmount);
+        if($checkAmount < 0) {
+            $gtPenalty = $checkAmount/2;
+            $meta = $self::getByNumber(["ac_number" => $ac_number]);
+            $meta = $self->dbTable::merge($meta);
+            $user = new User;
+            if(isset($meta->gt1_id) && $meta->gt1_id != "NA" && $meta->gt1_id != "") {
+                $gtMeta = $user->get((string) $meta->gt1_id);
+                $gt1Penalty = $self::loanRecoveryProcess($gtMeta->id, $gtPenalty, $ac_number);
+                if($gt1Penalty < 0) {
+                    $gtPenalty += $gt1Penalty;
+                }
+                Messages::loanRecoveryGT($userId, $gtMeta, $gtPenalty, $gt1Penalty);
+            }
+            if(isset($meta->gt2_id) && $meta->gt2_id != "NA" && $meta->gt2_id != "") {
+                $gtMeta = $user->get((string) $meta->gt2_id);
+                $checkAmount = $self::loanRecoveryProcess($gtMeta->id, $gtPenalty, $ac_number);
+                Messages::loanRecoveryGT($userId, $gtMeta, $gtPenalty, $gt1Penalty);
+            }
+        }
+        $pd = new PendingDebits();
+        $pendingCredits = $pd->getPendingCredit($ac_number, "loan");
+        if(Operations::count($pendingCredits)) {
+            foreach ($pendingCredits as $pc) {
+                $self->dbTable->delete("t2w_pending_debits")
+                    ->where("id", $pc->id)->execute();
+            }
+        }
+        if(round($checkAmount, 2) >= 0) {
+            return self::terminate($ac_number);
+        } else {
+            $amount = -1 * $checkAmount;
+            $ewallet = self::getSingle(["user_id" => $userId, "ac_type" => "contribution"]);
+            $pd::new([
+                'amount' => $amount,
+                'narration' => 'Back duty due on '.date('d M, Y', time()).'. Being loan recovery against regular thrift',
+                'credit_account' => $ac_number,
+                'debit_account' => $ewallet->ac_number,
+                'category' => 'loan'
+            ]);
+        }
+        return $self::getByNumber(["ac_number" => $ac_number]);
+    }
+
+    public static function loanRecoveryProcess($userId, $checkAmount, $loanAccount) {
+
+        //clear ewallet
+        $ewallet = self::getSingle(["user_id" => $userId, "ac_type" => "contribution"]);
+        if($ewallet != null) {
+            $checkAmount = self::settleLoanRecovery($ewallet->ac_number, $checkAmount, $loanAccount);
+        }
+        
+        //clear regular thrift
+        $thrift = self::getSingle(["user_id" => $userId, "ac_type" => "regular_thrift"]);
+        if($thrift != null) {
+            $checkAmount = self::settleLoanRecovery($thrift->ac_number, $checkAmount, $loanAccount);
+        }
+
+        //liquidate term_deposit
+        $termDeposit = self::getSingle(["user_id" => $userId, "ac_type" => "term_deposit"]);
+        if(($termDeposit != null) && $checkAmount < 0) {
+            if(self::getBalance($termDeposit->ac_number) > 0) {
+                TermDeposit::liquidate($termDeposit->id);
+            }
+        }
+
+        //clear ewallet
+        //after liquidating term deposit
+        if($ewallet != null) {
+            $checkAmount = self::settleLoanRecovery($ewallet->ac_number, $checkAmount, $loanAccount);
+        }
+
+        //clear lien
+        if($ewallet != null) {
+            $checkAmount = self::settleLoanRecoveryByLien($ewallet, $checkAmount, $loanAccount);
+        }
+
+        return $checkAmount;
+    }
+
+    public static function settleLoanRecovery($ac_number, $checkAmount, $loanAccount) {
+        set_time_limit(200);
+        if($checkAmount >= 0)
+            return $checkAmount;
+        $balance = self::getBalance($ac_number);
+        if($balance > 0) {
+            if(($balance + $checkAmount) < 0) {
+                $checkAmount += $balance;
+                Wallets::debitAccount(
+                    [
+                        "narration" => "Loan recovery ifo $loanAccount",
+                        "amount" => $balance
+                    ], $ac_number
+                );
+        
+                Wallets::creditAccount(
+                    [
+                        "narration" => "Loan recovery ifo $ac_number",
+                        "amount" => $balance
+                    ], $loanAccount
+                );
+            } else {
+                $diff = $balance + $checkAmount;
+                $debitSum = $balance - $diff;
+                Wallets::debitAccount(
+                    [
+                        "narration" => "Loan recovery ifo $loanAccount",
+                        "amount" => $debitSum
+                    ], $ac_number
+                );
+        
+                Wallets::creditAccount(
+                    [
+                        "narration" => "Loan recovery from $ac_number",
+                        "amount" => $debitSum
+                    ], $loanAccount
+                );
+            }
+        }
+        return $checkAmount;
+    }
+
+    public static function settleLoanRecoveryByLien($account, $checkAmount, $loanAccount) {
+        $self = new self;
+        set_time_limit(200);
+        if($checkAmount > 0)
+            return $checkAmount;
+        $account = $self->dbTable::merge($account);
+        $lienBal = $account->lien_bal ?? 0;
+        if($lienBal > 0) {
+            if(($lienBal + $checkAmount) < 0) {
+                $self->dbTable->update("t2w_accounts")
+                    ->metaSet([
+                        'lien_bal' => 0
+                    ], [], $account->id, "t2w_accounts")
+                    ->where("id", $account->id)->execute();
+                Wallets::creditAccount(
+                    [
+                        "narration" => "Loan recovery from lien",
+                        "amount" => $lienBal
+                    ], $loanAccount
+                );
+                $checkAmount += $lienBal;
+            } else {
+                $diff = $lienBal + $checkAmount;
+                $debitSum = $lienBal - $diff;
+                $self->dbTable->update("t2w_accounts")
+                    ->metaSet([
+                        'lien_bal' => $diff
+                    ], [], $account->id, "t2w_accounts")
+                    ->where("id", $account->id)->execute();
+                Wallets::creditAccount(
+                    [
+                        "narration" => "Loan recovery from lien",
+                        "amount" => $debitSum
+                    ], $loanAccount
+                );
+                $checkAmount += $debitSum;
+            }
+        }
+        return $checkAmount;
+    }
 }
 
 ?>

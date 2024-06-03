@@ -39,7 +39,7 @@ class Messages
                     attention has just been raised. Kindly login to review, 
                     and approve as soon as you can. Thank you.";
         $not = new Notifications($message, "TERM DEPOSIT REQUEST - [$config->site_name]");
-        $not->toRole('super_admin', 'admin')->template()->mail()->log();
+        $not->toRole('super_admin', 'admin')->template()->mail("sendmail")->log();
     }
 
     public static function approvedTermDeposit($amount, $mv, $md, $userId) {
@@ -61,7 +61,7 @@ class Messages
         }
         $intent = strtoupper($intent);
         $not = new Notifications($message, "TERM DEPOSIT $intent - [$config->site_name]");
-        $not->toRole('super_admin', 'admin')->template()->mail()->log();
+        $not->toRole('super_admin', 'admin')->template()->mail("sendmail")->log();
     }
 
     public static function guarantorNomination($userId) {
@@ -70,7 +70,7 @@ class Messages
         Please login to your portal to review, approve or decline the request. 
         You are also advised not to surety a participant who is not well known to you.</p>";
         $not = new Notifications($message, "REQUEST TO SURETY A LOAN - [$config->site_name]");
-        $not->to($userId)->template()->mail()->log();
+        $not->to($userId)->template()->mail("sendmail")->log();
     }
 
     public static function guarantorsAccepted($meta) {
@@ -141,14 +141,14 @@ class Messages
         $config = new Config;
         $message = "<p>A member just requested to buy $units units of share. Please login to review and approve or decline.</p>";
         $not = new Notifications($message, "SHARES: BUYING - [$config->site_name]");
-        $not->toRole("super_admin")->template()->mail()->log();
+        $not->toRole("super_admin")->template()->mail("sendmail")->log();
     }
 
     public static function sellShare($units) {
         $config = new Config;
         $message = "<p>A member just requested to sell $units units of share. Please login to review and approve or decline.</p>";
         $not = new Notifications($message, "SHARES: SELLING - [$config->site_name]");
-        $not->toRole("super_admin")->template()->mail()->log();
+        $not->toRole("super_admin")->template()->mail("sendmail")->log();
     }
 
     public static function approveBuy($userId, $units) {
@@ -157,21 +157,80 @@ class Messages
         Thank you for investing in our shares. You are now a shareholder in the cooperative
          and can now earn dividends on your shares.</p>";
         $not = new Notifications($message, "SHARES: BUY - [$config->site_name]");
-        $not->to($userId)->template()->mail()->log();
+        $not->to($userId)->template()->mail("sendmail")->log();
     }
 
     public static function declineBuy($userId, $units) {
         $config = new Config;
         $message = "<p>Your request to buy $units units of shares was declined.</p>";
         $not = new Notifications($message, "SHARES: BUYING DECLINED - [$config->site_name]");
-        $not->to($userId)->template()->mail()->log();
+        $not->to($userId)->template()->mail("sendmail")->log();
     }
 
     public static function declineSell($userId, $units) {
         $config = new Config;
         $message = "<p>Your request to sell $units units of shares was declined.</p>";
         $not = new Notifications($message, "SHARES: SELLING DECLINED - [$config->site_name]");
-        $not->to($userId)->template()->mail()->log();
+        $not->to($userId)->template()->mail("sendmail")->log();
+    }
+
+    public static function payoutRequest($userId, $amount) {
+        $config = new Config;
+        $fullname = Operations::getFullname($userId);
+        $message = "<p>$fullname requested for payout. Please review and approve.</p>";
+        $not = new Notifications($message, "PAYOUT REQUEST - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail("sendmail")->log();
+    }
+
+    public static function payoutApproved($userId, $amount, $payoutSum, $bankCharges) {
+        $config = new Config;
+        $message = "<p>Your payout request of ".number_format($amount, 2)." naira was approved as follows:.</p>";
+        $message .= "<p>Total paid to bank: ".number_format($payoutSum, 2)."<p>";
+        $message .= "<p>Bank charge recovery: ".number_format($bankCharges, 2)."<p>";
+        $not = new Notifications($message, "SHARES: SELLING DECLINED - [$config->site_name]");
+        $not->to($userId)->template()->mail("sendmail")->log();
+    }
+
+    public static function terminateLoan($account) {
+        $config = new Config;
+        $message = "<p>Congratulations, your loan has been completely settled.</p>";
+        $not = new Notifications($message, "LOAN REPAYMENT: CLEARED - [$config->site_name]");
+        $not->to($account->user_id)->template()->mail("sendmail")->log();
+        if($account->gt1_fullname != "NA" && $account->gt2_fullname != "NA") {
+            $user = new \EvoPhp\Resources\User;
+            $gt1 = $user->get((string) $account->gt1_id);
+            $gt2 = $user->get((string) $account->gt2_id);
+            $fullname = Operations::getFullname($account);
+            $message = "<p>Congratulations, the loan you guaranteed in favor of $fullname was completely settled.</p>";
+            $not = new Notifications($message, "LOAN REPAYMENT: CLEARED - [$config->site_name]");
+            $not->to([$gt1, $gt2])->template()->mail("sendmail")->log();
+        }
+    }
+
+    public static function loanRecovery($userId, $loanBalance, $checkAmount) {
+        $config = new Config;
+        $amount = number_format((-1 * $loanBalance) + $checkAmount, 2);
+        $message = "<p>We regret to inform you that you have defaulted in the loan given to you and we have no other option than to recover the loan both principal and interest as covered by the policy. 
+        Therefore the sum of $amount naira was debited account your account.</p>";
+        $message .= "<p>This debit might affect your ewallet, liquidate your term deposit, 
+        clear your thrift savings and your lien as the case may be in other to recover 
+        in full the loan principal, interest and penalty. Sorry for the inconveniences.<p>";
+        $not = new Notifications($message, "LOAN RECOVERY - [$config->site_name]");
+        $not->to($userId)->template()->mail("sendmail")->log();
+    }
+
+    public static function loanRecoveryGT($userId, $gtMeta, $gtPenalty, $gt1Penalty) {
+        $config = new Config;
+        $amount = number_format((-1 * $gtPenalty) + $gt1Penalty, 2);
+        $fullname = Operations::getFullname($userId);
+        $message = "<p>We regret to inform you that $fullname who you agreed to surety in loan, 
+        have defaulted and we have no other option than to recover the loan both principal and 
+        interest as covered by the policy. Therefore the sum of $amount naira was debited from your account.</p>";
+        $message .= "<p>This debit might affect your ewallet, liquidate your term deposit, 
+        clear your thrift savings and your lien as the case may be in other to recover 
+        in full the loan principal, interest and penalty. Sorry for the inconveniences.<p>";
+        $not = new Notifications($message, "LOAN RECOVERY - [$config->site_name]");
+        $not->to($gtMeta)->template()->mail("sendmail")->log();
     }
 }
 

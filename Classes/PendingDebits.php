@@ -82,6 +82,16 @@ final class PendingDebits
         return $this->dbTable->execute()->rows();
     }
 
+    public function getPendingCredit(string $ac_number, string|NULL $category = NULL) {
+        $this->dbTable->select('t2w_pending_debits')
+                        ->where('status', 'pending')
+                        ->where('credit_account', $ac_number);
+        if($category != NULL) {
+            $this->dbTable->where('category', $category);
+        }
+        return $this->dbTable->execute()->rows();
+    }
+
     public static function handle($cr) {
         $self = new self;
         $self->handlePendingDebits($cr->account);
