@@ -22,7 +22,7 @@ final class Loan extends Accounts
     }
 
     public static function loanComponents($id) {
-        $data = self::getOnServer($id);
+        $data = gettype($id) == "object" ? $id : self::getOnServer($id);
         $response = array();
         $response['nextSettlementDate'] = ThriftSavings::nextSettlementDate();
         $response['monthsSpent'] = self::monthsSpent($data, $response['nextSettlementDate']);
@@ -42,7 +42,7 @@ final class Loan extends Accounts
 
     public static function monthsSpent($data, $nextSettlement) {
         $config = new Config();
-        $rtsd = Options::get('rt_settlement');
+        $rtsd = Options::get('rt_settlement') ?? 28;
         $dateTo = date_create($nextSettlement, new DateTimeZone($config->timezone));
         $now = date_create('now', new DateTimeZone($config->timezone));
         $moratorium = isset($data->moratorium) ? $data->moratorium : 0;
@@ -792,6 +792,121 @@ final class Loan extends Accounts
             }
         }
         return $checkAmount;
+    }
+
+    public static function getLoanAccounts() {
+        $self = new self;
+
+        return $self->dbTable->select("t2w_accounts")
+            ->where("ac_type", "loan")
+            ->whereIn("status", "s", "approved", "defaulted")
+            ->execute()->rows();
+    }
+
+    public static function settle($cronId) {
+        $config = new Config;
+
+        $self = new self;
+
+        $user = new User;
+
+        $refTime = time();
+        
+        $refDate = date("M Y", $refTime);
+
+        $rtsd = ThriftSavings::nextSettlementDate();
+
+        $rtsdTime = date_create($rtsd, new DateTimeZone($config->timezone));
+
+        $badLoan = Options::get("bad_loan") ?? 3;
+
+        $settled = $pending = array();
+
+        $accounts = $self::getLoanAccounts();
+
+        if(Operations::count($accounts) <= 0) return;
+
+        foreach ($accounts as $account) {
+            set_time_limit(200);
+            $balance = self::getBalance($account->ac_number);
+            if(round($balance) >= 0) continue;
+
+            $account = $self->dbTable->merge($account);
+
+            $moratorium = $account->moratorium ?? 0;
+
+            $dateFrom = date_create($account->time_altered, new DateTimeZone($config->timezone));
+            if($moratorium > 0) {
+                $interval = new \DateInterval('P'.$moratorium.'M');
+                $dateFrom->add($interval);
+            }
+            if($rtsdTime->getTimestamp() > $dateFrom->getTimestamp()) {
+                //settle
+                $monthsSpent = self::monthsSpent($account, $rtsd);
+                $remainingMonths = $account->tenure - $monthsSpent;
+                if($remainingMonths > 1) {
+                    $debitAmount = ($balance * -1)/$remainingMonths;
+                } else $debitAmount = $balance * -1;
+
+                $contribution = $self::getSingle(["user_id" => $account->user_id, "ac_type" => "contribution"]);
+                $contributionBalance = $self::getBalance($contribution->ac_number);
+
+                if($debitAmount > $contributionBalance) {
+                    // create pending debit
+                    $sumPC = PendingDebits::pendingCreditSum($account->ac_number);
+                    $countPC = PendingDebits::pendingCreditCount($account->ac_number);
+
+                    if($countPC >= $badLoan) {
+                        // defaulted
+                        $self->dbTable->update("t2w_accounts")
+                            ->set("status", "defaulted")
+                            ->where("id", $account->id)
+                            ->execute();
+                    }
+
+                    if(($balance + $sumPC + $debitAmount) >= 0) {
+                        $debitAmount = 0 - ($balance + $sumPC);
+                        if($debitAmount == 0) continue;
+                    }
+
+                    PendingDebits::new([
+                        "debit_account" => $contribution->ac_number,
+                        "credit_account" => $account->ac_number,
+                        "narration" => "Back duty due on $refDate. Being Loan repayment against e-wallet.",
+                        "amount" => $debitAmount,
+                        "category" => "rt",
+                    ]);
+    
+                    array_push($pending, [
+                        "user" => $user->get($account->user_id),
+                        "loan_balance" => number_format($balance, 2),
+                        "wallet_balance" => number_format($contributionBalance, 2),
+                        "sum_pc" => number_format($sumPC, 2),
+                        "count_pc" => number_format($countPC),
+                        "amount" => number_format($debitAmount)
+                    ]);
+                } else {
+                    Wallets::debitAccount(
+                        [
+                            "narration" => "Loan settlement for the month $refDate",
+                            "amount" => $debitAmount
+                        ], $contribution->ac_number
+                    );
+            
+                    Wallets::creditAccount(
+                        [
+                            "narration" => "Loan settlement for the month $refDate",
+                            "amount" => $debitAmount
+                        ], $account->ac_number
+                    );
+
+                    array_push($settled, $account->user_id);
+                }
+            }
+        }
+
+        Messages::loanSettlement($settled, $pending, $refDate);
+
     }
 }
 

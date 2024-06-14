@@ -232,6 +232,81 @@ class Messages
         $not = new Notifications($message, "LOAN RECOVERY - [$config->site_name]");
         $not->to($gtMeta)->template()->mail("sendmail")->log();
     }
+
+    public static function inflow($amount, $narration) {
+        $config = new Config;
+        $message = "<p>A new inflow of $amount narrated as $narration was posted and requires your approval.</p>";
+        $not = new Notifications($message, "INFLOW - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail("sendmail")->log();
+    }
+
+    public static function outflow($amount, $narration) {
+        $config = new Config;
+        $message = "<p>A new outflow of $amount narrated as $narration was posted and requires your approval.</p>";
+        $not = new Notifications($message, "OUTFLOW - [$config->site_name]");
+        $not->toRole("super_admin")->template()->mail("sendmail")->log();
+    }
+
+    public static function thriftSettlement($settled, $pending, $refDate) {
+        $config = new Config;
+        if(Operations::count($settled)) {
+            $message = "<p>Thank you for being a cooperator. Your e-wallet has just been debited to settle regular 
+                thrift savings for the month has just been settled. Login to your portal to view balance.</p>";
+            $not = new Notifications($message, "REGULAR THRIFT SETTLEMENT - [$config->site_name]");
+            $not->to($settled)->template()->mail("sendmail")->log();
+        }
+        if(Operations::count($pending)) {
+            $message = "<p>Sorry we could not settle your regular thrift savings for the month due to insufficient balance. 
+            Please login to your portal and credit your e-wallet as soon as possible to avoid issues.</p>";
+            $not = new Notifications($message, "REGULAR THRIFT SETTLEMENT - [$config->site_name]");
+            $not->to($pending)->template()->mail("sendmail")->log();
+        }
+        $message = "<p>Regular thrift savings for the month $refDate was settled successfully";
+        $not = new Notifications($message, "REGULAR THRIFT SETTLEMENT - [$config->site_name]");
+        $not->toRole("software_engineer", "admin", "super_admin")->template()->mail()->log();
+    }
+
+    public static function loanSettlement($settled, $pending, $refDate) {
+        $config = new Config;
+        $totalSettled = Operations::count($settled);
+        $totalDefault = Operations::count($pending);
+        $message = "<p>The automatic loan settlement for $refDate was completed successfully. 
+                $totalSettled account(s) were successfully settled";
+        if($totalDefault > 0) {
+            $message .= " and $totalDefault accounts 
+                were not debited due to insufficient balance. See details below";
+        }
+        $message .= ".</p>";
+        if($totalDefault > 0) {
+            $message .= "<table width=\"100%\">
+                            <thead>
+                                <tr align=\"center\">
+                                    <th>Name</th>
+                                    <th>Deduction Due</th>
+                                    <th>E-wallet Bal</th>
+                                    <th>Loan Bal</th>
+                                    <th>Total Pending Debit</th>
+                                    <th>Number of times defaulted</th>
+                                </tr>
+                            </thead>
+                            <tbody>";
+            foreach ($pending as $value) {
+                $value = (object) $value;
+                $fullname = Operations::getFullname($value->user);
+                $message .= "<tr>
+                                <td>$fullname</td>
+                                <td>$value->amount</td>
+                                <td>$value->wallet_balance</td>
+                                <td>$value->loan_balance</td>
+                                <td>$value->sum_pc</td>
+                                <td>$value->count_pc</td>
+                            </tr>";
+            }
+            $message .= "</tbody></table>";
+        }
+        $not = new Notifications($message, "LOAN SETTLEMENT - [$config->site_name]");
+        $not->toRole("software_engineer", "admin", "super_admin")->template()->mail()->log();
+    }
 }
 
 ?>

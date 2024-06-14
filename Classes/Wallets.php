@@ -33,6 +33,7 @@ final class Wallets {
     public function new($data, $ledger) {
         extract($data);
         $session = Session::getInstance();
+        if($amount == 0) return null;
         $id = $this->dbTable->insert('t2w_transactions', 'sdssssi', [
             "account" => $account,
             "amount" => (double) $amount,
@@ -40,7 +41,7 @@ final class Wallets {
             "status" => $status ?? "successful",
             "narration" => $narration ?? "Deposit transaction",
             "meta" => json_encode($meta ?? []),
-            "last_altered_by" => $session->getResourceOwner()->user_id
+            "last_altered_by" => $session->getResourceOwner()->user_id ?? 0
         ])->execute();
         // send notice
         return $this->dbTable->select('t2w_transactions')

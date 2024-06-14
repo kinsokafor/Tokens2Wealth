@@ -153,6 +153,39 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    //Inflow Outflow //Deposit Payouts
+    $router->post('/balance/inflow-outflow', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\InflowOutflow::balance($params['from'] ?? NULL, $params['to'] ?? NULL);
+        });
+    });
+
+    $router->post('/break-down/inflow-outflow', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\InflowOutflow::breakDown($params['from'] ?? NULL, $params['to'] ?? NULL);
+        });
+    });
+
+    $router->post('/balance/deposit-payout', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Payout::balance($params['from'] ?? NULL, $params['to'] ?? NULL);
+        });
+    });
+
+    $router->post('/break-down/deposit-payout', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Payout::breakDown($params['from'] ?? NULL, $params['to'] ?? NULL);
+        });
+    });
+
     // Thrift
     $router->post('/edit-thrift-amount', function($params){
         $request = new Requests;
@@ -183,6 +216,14 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::new($params);
+        });
+    });
+
+    $router->post('/thrift/liquidate', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9,10)->execute(function() use ($params) {
+            return \Public\Modules\Tokens2Wealth\Classes\ThriftSavings::liquidate((int) $params['id']);
         });
     });
 
@@ -455,6 +496,39 @@ $router->group('/t2w/api', function () use ($router) {
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Payout::decline((int) $params['id']);
+        });
+    });
+
+    //inflow outflow
+    $router->post('/post-inflow', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\InflowOutflow::postInflow($params);
+        });
+    });
+
+    $router->post('/post-outflow', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\InflowOutflow::postOutflow($params);
+        });
+    });
+
+    $router->post('/confirm-inflow-outflow', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\InflowOutflow::confirm($params["id"]);
+        });
+    });
+
+    $router->post('/decline-inflow-outflow', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\InflowOutflow::decline($params["id"]);
         });
     });
 

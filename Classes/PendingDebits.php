@@ -140,6 +140,42 @@ final class PendingDebits
                         ->set('time_altered', $d->format('Y-m-d H:i:s'))
                         ->where('id', $pd->id)->execute(); 
     }
+
+    public static function pendingDebitCount($account) {
+        $self = new self;
+
+        return $self->dbTable->select('t2w_pending_debits', 'COUNT(id) as count')
+                            ->where('debit_account', $account)
+                            ->where('status', 'pending')
+                            ->execute()->row()->count;
+    }
+
+    public static function pendingDebitSum($account) {
+        $self = new self;
+
+        return $self->dbTable->select('t2w_pending_debits', 'IFNULL(SUM(amount), 0) as sum')
+                            ->where('debit_account', $account)
+                            ->where('status', 'pending')
+                            ->execute()->row()->sum;
+    }
+
+    public static function pendingCreditCount($account) {
+        $self = new self;
+
+        return $self->dbTable->select('t2w_pending_debits', 'COUNT(id) as count')
+                            ->where('credit_account', $account)
+                            ->where('status', 'pending')
+                            ->execute()->row()->count;
+    }
+
+    public static function pendingCreditSum($account) {
+        $self = new self;
+
+        return $self->dbTable->select('t2w_pending_debits', 'IFNULL(SUM(amount), 0) as sum')
+                            ->where('credit_account', $account)
+                            ->where('status', 'pending')
+                            ->execute()->row()->sum;
+    }
 }
 
 ?>

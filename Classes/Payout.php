@@ -5,6 +5,7 @@ namespace Public\Modules\Tokens2Wealth\Classes;
 use EvoPhp\Resources\Options;
 use EvoPhp\Resources\User;
 use EvoPhp\Api\Operations;
+use EvoPhp\Database\Session;
 
 final class Payout extends Accounts 
 {
@@ -125,5 +126,59 @@ final class Payout extends Accounts
         if ($count >= $maxMonthlyPayout) {
             return ["message" => "Sorry you have exceeded your maximum payout requests for the month. Try again next month.", "status" => false];
         } else return ["message" => "", "status" => true];
+    }
+
+    public static function postOutflow($data) {
+        extract($data);
+        $self = new self;
+        $session = Session::getInstance();
+        $id = $self->dbTable->insert("t2w_inflow_outflow", "dssssssi", [
+                "amount" => (double) $amount,
+                "ledger" => "debit",
+                "pop" => $pop ?? "#",
+                "narration" => $narration ?? "",
+                "classification" => $classification ?? "Not classified",
+                "status" => "unconfirmed",
+                "meta" => json_encode([
+                    "mode_of_payment" => $mode_of_payment ?? "",
+                    "date_of_payment" => $date_of_payment ?? ""
+                ]),
+                "last_altered_by" => $session->getResourceOwner()->user_id
+            ])->execute();
+        $self->log("Posted an inflow of $amount narrated as $narration and classified as $classification");
+        Messages::outflow($amount, $narration);
+        return $self->dbTable->select("t2w_inflow_outflow")->where("id", $id)->execute()->row();
+    }
+
+    public static function balance($from = NULL, $to = NULL) {
+        $breakDown = (object) self::breakDown($from, $to);
+        return $breakDown->deposit - $breakDown->payout;
+    }
+
+    public static function breakDown($from = NULL, $to = NULL) {
+        $self = new self;
+        $q = $self->dbTable->select("t2w_ewallet_transactions", "SUM(amount) as sum")
+            ->where("ledger", "credit")
+            ->where("status", "confirmed");
+            if($from !== NULL) {
+                $q->where("time_altered", $from, "s", ">=");
+            }
+            if($to !== NULL) {
+                $q->where("time_altered", $to, "s", "<=");
+            }
+        $credits = $q->execute()->row()->sum;
+
+        $q = $self->dbTable->select("t2w_ewallet_transactions", "SUM(amount) as sum")
+            ->where("ledger", "debit")
+            ->where("status", "confirmed");
+            if($from !== NULL) {
+                $q->where("time_altered", $from, "s", ">=");
+            }
+            if($to !== NULL) {
+                $q->where("time_altered", $to, "s", "<=");
+            }
+        $debits = $q->execute()->row()->sum;
+        
+        return ["deposit" => $credits, "payout" => $debits];
     }
 }

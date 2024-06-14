@@ -214,6 +214,40 @@ final class TermDeposit extends Accounts
             ], "term_deposit", $user_id
         );
     }
+
+    public static function getTDAccounts() {
+        $self = new self;
+
+        return $self->dbTable->select("t2w_accounts")
+            ->where("ac_type", "term_deposit")
+            ->where("status", "active")
+            ->execute()->rows();
+    }
+
+    public static function settle($cronId) {
+        $self = new self;
+
+        $accounts = $self::getTDAccounts();
+
+        foreach ($accounts as $account) {
+            $account = $self->dbTable->merge($account);
+
+            $balance = $self::getBalance($account->ac_number);
+            
+            $interest = $self::dailyInterest($balance, $account->td_rate);
+
+            if(isset($account->interest_earned)) {
+                $interest += (double) $account->interest_earned;
+            }
+
+            $self->dbTable->update("t2w_accounts")
+                ->metaSet([
+                    "interest_earned" => (double) $interest
+                ], [], $account->id, "t2w_accounts")
+                ->where("id", $account->id)
+                ->execute();
+        }
+    }
 }
 
 ?>
