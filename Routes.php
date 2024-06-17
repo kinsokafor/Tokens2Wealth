@@ -552,6 +552,51 @@ $router->group('/t2w/api', function () use ($router) {
             return \Public\Modules\Tokens2Wealth\Classes\Operations::profileCompleteness($session->getResourceOwner()->user_id);
         });
     });
+
+    $router->post('/bulk-credit', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            switch ($params['mode']) {
+                case 'all_ewallets':
+                    return \EvoPhp\Api\Cron::schedule(
+                        "* * * * *", 
+                        "\Public\Modules\Tokens2Wealth\Classes\Contribution::bulkCredit",
+                        $params['amount'], $params['narration']);
+                    break;
+
+                case 'rt_dividends':
+                    return \EvoPhp\Api\Cron::schedule(
+                        "* * * * *", 
+                        "\Public\Modules\Tokens2Wealth\Classes\ThriftSavings::bulkCredit",
+                        $params['amount'], $params['narration']);
+                    break;
+
+                case 'share_dividends':
+                    return \EvoPhp\Api\Cron::schedule(
+                        "* * * * *", 
+                        "\Public\Modules\Tokens2Wealth\Classes\Shares::bulkCredit",
+                        $params['amount'], $params['narration']);
+                    break;
+                
+                default:
+                    http_response_code(401);
+                    return "Invalid submission";
+                    break;
+            }
+        });
+    });
+
+    $router->post('/bulk-debit', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \EvoPhp\Api\Cron::schedule(
+                "* * * * *", 
+                "\Public\Modules\Tokens2Wealth\Classes\Contribution::bulkDebit",
+                $params['amount'], $params['narration']);
+        });
+    });
 });
 
 //Pages

@@ -7,6 +7,7 @@ use EvoPhp\Api\Operations;
 use EvoPhp\Api\Config;
 use EvoPhp\Resources\Options;
 use EvoPhp\Resources\User;
+use EvoPhp\Resources\Store;
 
 final class Contribution extends Accounts
 {
@@ -401,6 +402,93 @@ final class Contribution extends Accounts
             ->where("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.\"upline-level$level\"'))", (string) $ac_number, "s")
             ->where("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.level'))", $level, false, ">=")
             ->execute()->row()->count;
+    }
+
+    public static function bulkCredit($cronId, $amount, $narration) {
+        $self = new self;
+        $accounts = $self->dbTable->select("t2w_accounts")
+                        ->where("ac_type", "contribution")
+                        ->execute()->rows();
+        $membersCount = Operations::count($accounts);
+        if($membersCount <= 0) {
+            \EvoPhp\Api\Cron::cancel($cronId);
+            return;
+        }
+        $creditAmount = $amount/$membersCount;
+        $participating_members = [];
+        foreach ($accounts as $account) {
+            set_time_limit(60);
+            Wallets::creditAccount(
+                [
+                    "narration" => $narration,
+                    "amount" => $creditAmount
+                ], $account->ac_number
+            );
+            array_push($participating_members, $account->user_id);
+        }
+        $store = new Store;
+        $store->new("bulk_credit", [
+            "participating_members" => $participating_members,
+            "amount" => (double) $amount,
+            "narration" => $narration,
+            "mode" => "all_ewallets"
+        ]);
+        $self->log("Super admin Implemented a bulk credit exercise to all e-wallets and $membersCount accounts were credited. 
+        Total sum of NGN ".number_format($amount)." was shared. Thank you");
+        \EvoPhp\Api\Cron::cancel($cronId);
+        return;
+    }
+
+    public static function bulkDebit($cronId, $amount, $narration) {
+        $self = new self;
+        $accounts = $self->dbTable->select("t2w_accounts")
+                        ->where("ac_type", "contribution")
+                        ->execute()->rows();
+        $membersCount = Operations::count($accounts);
+        if($membersCount <= 0) {
+            \EvoPhp\Api\Cron::cancel($cronId);
+            return;
+        }
+        $system_account = self::getGeneralSystemAccount();
+        $participating_members = [];
+        $refDate = date('Y-m-d', time());
+        foreach ($accounts as $account) {
+            set_time_limit(60);
+            if(self::getBalance($account->ac_number) < $amount) {
+                PendingDebits::new([
+                    "debit_account" => $account->ac_number,
+                    "credit_account" => $system_account,
+                    "narration" => "Back duty due on $refDate for: $narration",
+                    "amount" => $amount,
+                    "category" => "bulk_debit",
+                ]);
+            } else {
+                Wallets::debitAccount(
+                    [
+                        "narration" => $narration,
+                        "amount" => $amount
+                    ], $account->ac_number
+                );
+
+                Wallets::creditAccount(
+                    [
+                        "narration" => $narration,
+                        "amount" => $amount
+                    ], $system_account
+                );
+            }
+            array_push($participating_members, $account->user_id);
+        }
+        $store = new Store;
+        $store->new("bulk_debit", [
+            "participating_members" => $participating_members,
+            "amount" => (double) $amount,
+            "narration" => $narration,
+            "mode" => "all_ewallets"
+        ]);
+        $self->log("Super admin Implemented a bulk debit exercise to all e-wallets and $membersCount accounts were debited of NGN ".number_format($amount).". Thank you");
+        \EvoPhp\Api\Cron::cancel($cronId);
+        return;
     }
 }
 

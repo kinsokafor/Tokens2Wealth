@@ -6,6 +6,7 @@ use EvoPhp\Database\Session;
 use EvoPhp\Api\Operations;
 use EvoPhp\Resources\Options;
 use EvoPhp\Resources\User;
+use EvoPhp\Resources\Store;
 
 final class ThriftSavings extends Accounts
 {
@@ -196,6 +197,46 @@ final class ThriftSavings extends Accounts
         }
 
         Messages::thriftSettlement($settled, $pending, $refDate);
+    }
+
+    public static function bulkCredit($cronId, $amount, $narration) {
+        $self = new self;
+        $accounts = $self->dbTable->select("t2w_accounts")
+                        ->where("ac_type", "regular_thrift")
+                        ->where("status", "active")
+                        ->execute()->rows();
+        $totalBalance = self::getBalance("312%");
+        $membersCount = Operations::count($accounts);
+        if($membersCount <= 0 || $totalBalance <= 0) {
+            \EvoPhp\Api\Cron::cancel($cronId);
+            return;
+        }
+        $participating_members = [];
+        foreach ($accounts as $account) {
+            set_time_limit(60);
+            $balance = self::getBalance($account->ac_number);
+            if($balance <= 0) continue;
+            $perc = (100 * $balance)/$totalBalance;
+			$creditAmount = $perc * 0.01 * $amount;
+            Wallets::creditAccount(
+                [
+                    "narration" => $narration,
+                    "amount" => $creditAmount
+                ], "contribution", $account->user_id
+            );
+            array_push($participating_members, $account->user_id);
+        }
+        $store = new Store;
+        $store->new("bulk_credit", [
+            "participating_members" => $participating_members,
+            "amount" => (double) $amount,
+            "narration" => $narration,
+            "mode" => "rt_dividends"
+        ]);
+        $self->log("Super admin Implemented a bulk credit exercise across participating thrift savings account and ".Operations::count($participating_members)." accounts were credited. 
+        Total sum of NGN ".number_format($amount)." was shared. Thank you");
+        \EvoPhp\Api\Cron::cancel($cronId);
+        return;
     }
 }
 
