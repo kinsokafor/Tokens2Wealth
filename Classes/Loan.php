@@ -309,6 +309,25 @@ final class Loan extends Accounts
         return $self->dbTable->query($statement, 'ss', $membershipId, $membershipId)->execute()->rows();
     }
 
+    public static function approvedGuaranteedLoans($membershipId) {
+        $self = new self;
+        $statement = "SELECT t1.id, user_id, ac_number, ac_type, meta, status, 
+            time_altered, last_altered_by, t2.email, t2.username, t2.usermeta 
+            FROM t2w.t2w_accounts AS t1
+            LEFT JOIN
+            (SELECT id, email, username, meta as usermeta FROM t2w.users) as t2
+            ON t2.id = t1.user_id WHERE
+            `ac_type` = 'loan' AND (
+                (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_id')) LIKE ? AND
+                JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_approval')) LIKE 'approved') 
+                OR
+                (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt2_id')) LIKE ? AND
+                JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt2_approval')) LIKE 'approved')
+            )
+            ";
+        return $self->dbTable->query($statement, 'ss', $membershipId, $membershipId)->execute()->rows();
+    }
+
     public static function guarantorAccept($id, $membershipId) {
         $self = new self;
         $loan = Accounts::getById($id);

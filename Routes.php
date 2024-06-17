@@ -264,6 +264,17 @@ $router->group('/t2w/api', function () use ($router) {
         });
     });
 
+    $router->post('/approved-guaranteed-loans', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2,3,4,5,6,7,8,9)->execute(function() {
+            $session = \EvoPhp\Database\Session::getInstance();
+            $user = new \EvoPhp\Resources\User();
+            $meta = $user->get($session->getResourceOwner()->user_id);
+            return \Public\Modules\Tokens2Wealth\Classes\Loan::approvedGuaranteedLoans($meta->username);
+        });
+    });
+
     $router->post('/change-guarantor', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
