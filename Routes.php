@@ -142,6 +142,7 @@ $router->group('/t2w/api', function () use ($router) {
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
         $request->evoAction()->auth(1,2,3,4,5,6,7,8,9,10)->execute(function() use ($params){
+            $params['ac_number'] = rawurldecode($params['ac_number']);
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::getByNumber($params);
         });
     });
@@ -602,6 +603,10 @@ $router->group('/t2w/api', function () use ($router) {
 //Pages
 $router->get('/t2w/migrate', function() {
     Migrate::migrate();
+});
+
+$router->get('/t2w/migrate-users', function() {
+    Migrate::migrateUsers();
 });
 
 $router->get('/t2w', function($params){
