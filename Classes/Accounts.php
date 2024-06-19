@@ -21,11 +21,11 @@ class Accounts
         IFNULL(t2.credits, 0) as credits, IFNULL(t3.debits, 0) as debits FROM t2w_accounts as t1 
     LEFT JOIN 
         (   SELECT IFNULL(SUM(amount), 0) as credits, account 
-        FROM t2w.t2w_transactions WHERE ledger = 'credit' AND status = 'successful' GROUP BY account) as t2
+        FROM t2w_transactions WHERE ledger = 'credit' AND status = 'successful' GROUP BY account) as t2
     ON t1.ac_number LIKE t2.account
     LEFT JOIN 
         (   SELECT IFNULL(SUM(amount), 0) as debits, account 
-        FROM t2w.t2w_transactions WHERE ledger = 'debit' AND status = 'successful' GROUP BY account) as t3
+        FROM t2w_transactions WHERE ledger = 'debit' AND status = 'successful' GROUP BY account) as t3
     ON t1.ac_number LIKE t3.account";
 
     function __construct() {

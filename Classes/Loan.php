@@ -294,9 +294,9 @@ final class Loan extends Accounts
         $self = new self;
         $statement = "SELECT t1.id, user_id, ac_number, ac_type, meta, 
             time_altered, last_altered_by, t2.email, t2.username, t2.usermeta 
-            FROM t2w.t2w_accounts AS t1
+            FROM t2w_accounts AS t1
             LEFT JOIN
-            (SELECT id, email, username, meta as usermeta FROM t2w.users) as t2
+            (SELECT id, email, username, meta as usermeta FROM users) as t2
             ON t2.id = t1.user_id WHERE
             `ac_type` = 'loan' AND (
                 (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_id')) LIKE ? AND
@@ -313,9 +313,9 @@ final class Loan extends Accounts
         $self = new self;
         $statement = "SELECT t1.id, user_id, ac_number, ac_type, meta, status, 
             time_altered, last_altered_by, t2.email, t2.username, t2.usermeta 
-            FROM t2w.t2w_accounts AS t1
+            FROM t2w_accounts AS t1
             LEFT JOIN
-            (SELECT id, email, username, meta as usermeta FROM t2w.users) as t2
+            (SELECT id, email, username, meta as usermeta FROM users) as t2
             ON t2.id = t1.user_id WHERE
             `ac_type` = 'loan' AND (
                 (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_id')) LIKE ? AND
@@ -465,7 +465,7 @@ final class Loan extends Accounts
     public static function pendingLoanCount() {
         $self = new self;
         $statement = "SELECT COUNT(id) AS count 
-            FROM t2w.t2w_accounts 
+            FROM t2w_accounts 
             WHERE
             `ac_type` = 'loan' AND (
                 JSON_UNQUOTE(JSON_EXTRACT(meta, '$.gt1_approval')) LIKE 'approved' 
