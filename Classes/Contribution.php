@@ -404,7 +404,9 @@ final class Contribution extends Accounts
             ->execute()->row()->count;
     }
 
-    public static function bulkCredit($cronId, $amount, $narration) {
+    public static function bulkCredit($cronId, $args) {
+        $amount = $args[0] ?? 0;
+        $narration = $args[1] ?? "";
         $self = new self;
         $accounts = $self->dbTable->select("t2w_accounts")
                         ->where("ac_type", "contribution")
@@ -439,7 +441,9 @@ final class Contribution extends Accounts
         return;
     }
 
-    public static function bulkDebit($cronId, $amount, $narration) {
+    public static function bulkDebit($cronId, $args) {
+        $amount = $args[0] ?? 0;
+        $narration = $args[1] ?? "";
         $self = new self;
         $accounts = $self->dbTable->select("t2w_accounts")
                         ->where("ac_type", "contribution")
