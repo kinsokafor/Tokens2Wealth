@@ -4,6 +4,7 @@ namespace Public\Modules\Tokens2Wealth\Classes;
 
 use EvoPhp\Resources\DbTable;
 use EvoPhp\Database\Session;
+use EvoPhp\Api\Operations;
 
 final class Wallets {
 
@@ -88,10 +89,15 @@ final class Wallets {
         $self = new self;
         $txn = $self->dbTable->select('t2w_transactions')
             ->where("id", (int) $id)
-            ->execute()->row();
+            ->execute()->row(0, "ARRAY_A");
         if($txn == null) return null;
         $ledger = $txn->ledger == "credit" ? "debit" : "credit";
-        return $self->new((array) $txn, $ledger);
+        $session = Session::getInstance();
+        $fullname = Operations::getFullname($session->getResourceOwner()->user_id);
+        $txn->narration = "REVERSAL :: $txn->narration / REF DATE $txn->time_altered by $fullname";
+        $txn = (array) $txn;
+        unset($txn['ledger']);
+        return $self->new($txn, $ledger);
     }
 }
 ?>

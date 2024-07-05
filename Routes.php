@@ -156,7 +156,7 @@ $router->group('/t2w/api', function () use ($router) {
     $router->post('/reverse-statement', function($params){
         $request = new Requests;
         $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
-        $request->evoAction()->auth(1)->execute(function() use ($params){
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
             return \Public\Modules\Tokens2Wealth\Classes\Wallets::reverse((int) $params['id']);
         });
     });
