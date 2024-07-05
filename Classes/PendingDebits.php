@@ -42,6 +42,9 @@ final class PendingDebits
             "meta" => []
         ], $data);
         extract($data);
+        if($amount <= 0) {
+            return null;
+        }
         $self = new self;
         $session = Session::getInstance();
         $id = $self->dbTable->insert("t2w_pending_debits", "sssdsssi", [

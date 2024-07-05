@@ -83,5 +83,15 @@ final class Wallets {
         $data['account'] = $account;
         return self::newDebit($data);
     }
+
+    public static function reverse($id) {
+        $self = new self;
+        $txn = $self->dbTable->select('t2w_transactions')
+            ->where("id", (int) $id)
+            ->execute()->row();
+        if($txn == null) return null;
+        $ledger = $txn->ledger == "credit" ? "debit" : "credit";
+        return $self->new((array) $txn, $ledger);
+    }
 }
 ?>

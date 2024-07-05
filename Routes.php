@@ -153,6 +153,13 @@ $router->group('/t2w/api', function () use ($router) {
             return \Public\Modules\Tokens2Wealth\Classes\Accounts::editStatus($params['id'], $params['status']);
         });
     });
+    $router->post('/reverse-statement', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Wallets::reverse((int) $params['id']);
+        });
+    });
 
     //Inflow Outflow //Deposit Payouts
     $router->post('/balance/inflow-outflow', function($params){
