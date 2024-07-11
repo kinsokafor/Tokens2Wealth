@@ -893,7 +893,7 @@ final class Loan extends Accounts
                         "credit_account" => $account->ac_number,
                         "narration" => "Back duty due on $refDate. Being Loan repayment against e-wallet.",
                         "amount" => $debitAmount,
-                        "category" => "rt",
+                        "category" => "loan",
                     ]);
     
                     array_push($pending, [
