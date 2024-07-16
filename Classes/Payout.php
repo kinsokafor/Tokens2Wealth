@@ -78,6 +78,7 @@ final class Payout extends Accounts
                 "mode_of_payment" => $mode_of_payment
             ], [], $id)
             ->where("id", $id, "i")->execute();
+        $txn = $self->dbTable->merge($txn);
         Messages::payoutApproved($account->user_id, $txn->amount, $txn->payout_sum, $txn->bank_charge);
         $fullname = Operations::getFullname($account->user_id);
         $self->log("$fullname's payout request of ".number_format($txn->amount, 2)." was confirmed as paid. 
