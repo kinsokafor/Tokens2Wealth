@@ -707,7 +707,7 @@ final class Loan extends Accounts
         if($thrift != null) {
             $checkAmount = self::settleLoanRecovery($thrift->ac_number, $checkAmount, $loanAccount);
         }
-
+        
         //liquidate term_deposit
         $termDeposit = self::getSingle(["user_id" => $userId, "ac_type" => "term_deposit"]);
         if(($termDeposit != null) && $checkAmount < 0) {
@@ -767,6 +767,7 @@ final class Loan extends Accounts
                         "amount" => $debitSum
                     ], $loanAccount
                 );
+                $checkAmount = 0;
             }
         }
         return $checkAmount;
