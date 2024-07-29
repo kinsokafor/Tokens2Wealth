@@ -767,7 +767,7 @@ final class Loan extends Accounts
                         "amount" => $debitSum
                     ], $loanAccount
                 );
-                $checkAmount = 0;
+                $checkAmount += $debitSum;
             }
         }
         return $checkAmount;
