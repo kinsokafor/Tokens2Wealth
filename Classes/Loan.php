@@ -593,12 +593,15 @@ final class Loan extends Accounts
                     ->where("beneficiary", $account->user_id)
                     ->where("status", "pending")
                     ->execute()->row();
-        $store->update()->metaSet([
-            'status' => 'cleared', 
-            'cleared_on' => time(), 
-            'tenure' => $account->tenure, 
-            'rate' => $account->rate
-        ], [], $loan->id)->where("id", $loan->id)->execute();
+        if($loan != null) {
+           $store->update()->metaSet([
+                'status' => 'cleared', 
+                'cleared_on' => time(), 
+                'tenure' => $account->tenure, 
+                'rate' => $account->rate
+            ], [], $loan->id)->where("id", $loan->id)->execute(); 
+        }
+        
         $pd = new PendingDebits();
         $pendingCredits = $pd->getPendingCredit($account->ac_number, "loan");
         if(Operations::count($pendingCredits)) {

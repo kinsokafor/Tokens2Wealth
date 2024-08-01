@@ -153,7 +153,7 @@ final class Shares extends Accounts
 
                 $store->update()->metaSet([
                     "approval" => 1
-                ], [], $data->id)->execute();
+                ], [], $data->id)->where("id", $data->id)->execute();
 
                 Messages::approveBuy($data->user_id, $data->units);
 
@@ -177,7 +177,7 @@ final class Shares extends Accounts
 
                 $store->update()->metaSet([
                     "approval" => 1
-                ], [], $data->id)->execute();
+                ], [], $data->id)->where("id", $data->id)->execute();
 
                 $log = new AdminLog();
 
