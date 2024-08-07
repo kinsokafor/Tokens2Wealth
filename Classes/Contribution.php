@@ -96,6 +96,7 @@ final class Contribution extends Accounts
         }
         $data = array_merge((array) $data, ["status" => "successful"]);
         $data["meta"] = array_merge(["pd_id" => $id], (array) json_decode($data["meta"]));
+        $data["narration"] = "Cash deposit on ".($data["meta"]["date_of_payment"] ?? "")." through ".($data["meta"]["mode_of_payment"] ?? "");
         $credit = Wallets::newCredit($data);
         if($credit == NULL) {
             http_response_code(400);
