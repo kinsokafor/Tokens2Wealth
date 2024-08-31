@@ -97,6 +97,10 @@ final class PendingDebits
 
     public static function handle($cr) {
         $self = new self;
+        if (stripos($cr->narration, "Being sum approved for loan") !== false) {
+            //Do not settle pending debit on loan
+            return;
+        }
         $self->handlePendingDebits($cr->account);
     }
     
