@@ -157,9 +157,7 @@ final class Shares extends Accounts
 
                 Messages::approveBuy($data->user_id, $data->units);
 
-                $log = new AdminLog();
-
-                $log->log(Operations::getFullname($data->user_id)."'s request to buy $data->units units of shares was authorized by admin");
+                $self->log(Operations::getFullname($data->user_id)."'s request to buy $data->units units of shares was authorized by admin");
             break;
 
             case "sell_share":
@@ -179,9 +177,7 @@ final class Shares extends Accounts
                     "approval" => 1
                 ], [], $data->id)->where("id", $data->id)->execute();
 
-                $log = new AdminLog();
-
-                $log->log(Operations::getFullname($data->user_id)."'s request to sell $data->units units of shares was authorized by admin.");
+                $self->log(Operations::getFullname($data->user_id)."'s request to sell $data->units units of shares was authorized by admin.");
             break;
 
             default:
@@ -214,9 +210,7 @@ final class Shares extends Accounts
 
                 Messages::declineBuy($data->user_id, $data->units);
 
-                $log = new AdminLog();
-
-                $log->log(Operations::getFullname($data->user_id)."'s request to sell $data->units units of shares was declined by admin.");
+                $self->log(Operations::getFullname($data->user_id)."'s request to sell $data->units units of shares was declined by admin.");
             break;
 
             case "sell_share":
@@ -240,9 +234,7 @@ final class Shares extends Accounts
 
                 Messages::declineSell($data->user_id, $data->units);
 
-                $log = new AdminLog();
-
-                $log->log(Operations::getFullname($data->user_id)."'s request to buy $data->units units of shares was declined by admin");
+                $self->log(Operations::getFullname($data->user_id)."'s request to buy $data->units units of shares was declined by admin");
             break;
 
             default:
