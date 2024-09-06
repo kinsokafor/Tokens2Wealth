@@ -236,10 +236,10 @@ final class Loan extends Accounts
         $gteWallet = self::merge(Accounts::getSingle(["user_id" => $meta->id, "ac_type" => "contribution"]));
         $eWallet = self::merge(Accounts::getSingle(["user_id" => $userId, "ac_type" => "contribution"]));
 
-        if($gteWallet->level <= $eWallet->level) {
-            http_response_code(400);
-            return "Sorry the user with membership ID $meta->username cannot be used as your guarantor. Your guarantor must be someone higher than you in level";
-        }
+        // if($gteWallet->level <= $eWallet->level) {
+        //     http_response_code(400);
+        //     return "Sorry the user with membership ID $meta->username cannot be used as your guarantor. Your guarantor must be someone higher than you in level";
+        // }
 
         if(!self::testGuarantorCapacity($meta, $loanAmount)) {
             http_response_code(400);

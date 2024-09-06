@@ -495,6 +495,46 @@ final class Contribution extends Accounts
         \EvoPhp\Api\Cron::cancel($cronId);
         return;
     }
+
+    public static function creditSingle($data) {
+        extract($data);
+        $self = new self;
+        $a = $self->dbTable->select("t2w_accounts")
+                ->where("ac_type", "contribution")
+                ->where("ac_number", $account)
+                ->execute()->row();
+        if($a == null) {
+            http_response_code(401);
+            return "Incorrect wallet number";
+        }
+        Wallets::creditAccount(
+            [
+                "narration" => $narration,
+                "amount" => $amount
+            ], $account
+        );
+        $self->log("Credited the e-wallet number $account with NGN ".number_format($amount).". Thank you");
+    }
+
+    public static function debitSingle($data) {
+        extract($data);
+        $self = new self;
+        $a = $self->dbTable->select("t2w_accounts")
+                ->where("ac_type", "contribution")
+                ->where("ac_number", $account)
+                ->execute()->row();
+        if($a == null) {
+            http_response_code(401);
+            return "Incorrect wallet number";
+        }
+        Wallets::debitAccount(
+            [
+                "narration" => $narration,
+                "amount" => $amount
+            ], $account
+        );
+        $self->log("Debited the e-wallet number $account with NGN ".number_format($amount).". Thank you");
+    }
 }
 
 ?>

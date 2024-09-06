@@ -605,6 +605,22 @@ $router->group('/t2w/api', function () use ($router) {
                 $params['amount'], $params['narration']);
         });
     });
+
+    $router->post('/credit-single', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::creditSingle($params);
+        });
+    });
+
+    $router->post('/debit-single', function($params){
+        $request = new Requests;
+        $params = array_merge($params, (array) json_decode(file_get_contents('php://input'), true));
+        $request->evoAction()->auth(1,2)->execute(function() use ($params){
+            return \Public\Modules\Tokens2Wealth\Classes\Contribution::debitSingle($params);
+        });
+    });
 });
 
 //Pages
