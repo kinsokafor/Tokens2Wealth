@@ -15,6 +15,12 @@ class Messages
         
     }
 
+    public static function newRegistration() {
+        $message = "<p>A new member just registered on the platform. Please login to approve.</p>";
+        $not = new Notifications($message);
+        $not->toRole('super_admin')->log()->mail();
+    }
+
     public static function pendingDebit($data) {
         $account = Accounts::getByNumber(['ac_number' => $data->debit_account]);
         $message = "<p>A new pending debit was queued for you</p>";
@@ -130,10 +136,10 @@ class Messages
     public static function newUser($meta) {
         $config = new Config;
         $link = "$config->root/t2w/activate/$meta->id/$meta->activation";
-        $message = "<p>Welcome to $config->site_name. Your new account was registered but not yet active</p>";
-        $message .= "<p>To activate your account click the following button<br/></p>"; 
-        $message .= "<div><a href=\"$link\" style=\"background: green; color: #fff; padding: 7px; border-radius: 3px;\">ACTIVATE</a></div>";
-        $not = new Notifications($message, "LOAN REQUEST DECLINED - [$config->site_name]");
+        $message = "<p>Welcome to $config->site_name. Your new account was registered.</p>";
+        // $message .= "<p>To activate your account click the following button<br/></p>"; 
+        // $message .= "<div><a href=\"$link\" style=\"background: green; color: #fff; padding: 7px; border-radius: 3px;\">ACTIVATE</a></div>";
+        $not = new Notifications($message, "WELCOME - [$config->site_name]");
         $not->to($meta->user_id)->template()->mail()->log();
     }
 

@@ -3,6 +3,7 @@
 use Public\Modules\Tokens2Wealth\T2WController;
 use EvoPhp\Api\Requests\Requests;
 use Public\Modules\Tokens2Wealth\Classes\Migrate;
+use Public\Modules\Tokens2Wealth\Classes\Messages;
 
 //API End points
 $router->group('/t2w/api', function () use ($router) {
@@ -23,13 +24,14 @@ $router->group('/t2w/api', function () use ($router) {
             }
             $params = array_merge($params, [
                 "username" => \Public\Modules\Tokens2Wealth\Classes\Operations::createMembershipId(),
-                "status" => "inactive",
+                "status" => "active",
                 "role" => "pending",
                 "temp_role" => "member",
                 "activation" => SHA1(rand(9999, 99999))
             ]);
             $request = new Requests;
             $request->user($params)->auth();
+            Messages::newRegistration();
             return $request->response;
         });
     });
